@@ -223,15 +223,15 @@ function validateAndExtractPayload() {
 // Bulletproof Order Submission Handler
 async function handleOrderPlacement() {
     const payload = getOrderPayload();
-    if (!payload) return; // Form validation failed (alert already shown)
+    if (!payload) return; // Form validation failed (alert was shown)
 
     const btn = document.getElementById("submitBtn");
     const originalText = btn.innerHTML;
-    btn.innerHTML = "<span>⏳ Logging Order...</span>";
+    btn.innerHTML = "<span>⏳ Processing...</span>";
     btn.disabled = true;
-    btn.style.opacity = "0.7";
 
-    // 1. Silent Log to Google Sheet (non-blocking)
+    // 1. Fire-and-forget log to Google Sheet (NON-BLOCKING)
+    // This sends the data in the background so the browser doesn't wait 4 seconds
     try {
         fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
@@ -240,25 +240,19 @@ async function handleOrderPlacement() {
             body: JSON.stringify(payload)
         }).catch(err => console.warn("Background sheet sync:", err));
     } catch (e) {
-        console.warn("Sheet write failed, proceeding to order:", e);
+        console.warn("Sheet write non-blocking call:", e);
     }
 
-    // 2. Safe PDF generation (will NEVER crash order flow if jsPDF fails)
+    // 2. Safe PDF generation (wrapped in try-catch so it never stops checkout)
     try {
         if (window.jspdf && window.jspdf.jsPDF) {
             generateTaxInvoicePDF(payload);
-        } else {
-            console.warn("jsPDF library not loaded yet; skipping instant download.");
         }
     } catch (pdfErr) {
         console.warn("PDF generation error:", pdfErr);
     }
 
-    btn.innerHTML = originalText;
-    btn.disabled = false;
-    btn.style.opacity = "1";
-
-    // 3. Prepare Customer Order Text for WhatsApp
+    // 3. Format WhatsApp Ticket for Bakery Owner
     const isUPI = (paymentMethod === 'UPI');
     const waOrderText =
         `Hello *Chocolate Tree Cake Shop*! 🎂\n\n` +
@@ -280,23 +274,29 @@ async function handleOrderPlacement() {
 
     const waUrl = `https://wa.me/${SHOP_WHATSAPP_NUMBER}?text=${encodeURIComponent(waOrderText)}`;
 
-    // 4. Execution path based on chosen payment mode
+    // 4. Instant Action (Executes immediately within the user tap event)
     if (isUPI) {
         const note = `Order-${payload.orderId}`;
         const upiUrl = `upi://pay?pa=${encodeURIComponent(SHOP_UPI_ID)}&pn=${encodeURIComponent(SHOP_NAME)}&am=${payload.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
 
         const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
         if (isMobile) {
-            // Launch UPI directly
+            // Direct intent launch — will no longer be blocked by Chrome
             window.location.href = upiUrl;
         } else {
-            // On desktop, redirect straight to WhatsApp with order details
-            window.open(waUrl, "_blank");
+            // Desktop: Open WhatsApp directly
+            window.location.href = waUrl;
         }
     } else {
-        // Pay on Delivery: Directly open WhatsApp with booking details
+        // Pay on Delivery: Directly jump to WhatsApp chat
         window.location.href = waUrl;
     }
+
+    // Re-enable button state
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }, 2000);
 }
 
 // User confirms they finished paying in their UPI App

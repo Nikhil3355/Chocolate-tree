@@ -3,6 +3,7 @@ let paymentMethod = 'UPI';
 let cakeCatalog = defaultCatalogStructure; // Loaded from js/data.js
 let selectedCake = cakeCatalog[0];
 let selectedSize = 'small';
+let pendingOrderPayload = null;
 
 // Fetch dynamic live menu from Google Apps Script
 async function fetchLiveMenu() {
@@ -32,6 +33,7 @@ async function fetchLiveMenu() {
 
 function populateDropdown() {
   const dropdown = document.getElementById('cakeSelector');
+  if (!dropdown) return;
   dropdown.innerHTML = '';
   cakeCatalog.forEach((cake) => {
     const opt = document.createElement('option');
@@ -55,10 +57,10 @@ function init() {
   const tomorrowStr = tomorrow.toISOString().split('T')[0];
   const todayStr = today.toISOString().split('T')[0];
 
-  document.getElementById('pickupDate').value = tomorrowStr;
-  document.getElementById('pickupDate').min = todayStr;
-  document.getElementById('deliveryDate').value = tomorrowStr;
-  document.getElementById('deliveryDate').min = todayStr;
+  const pDate = document.getElementById('pickupDate');
+  const dDate = document.getElementById('deliveryDate');
+  if (pDate) { pDate.value = tomorrowStr; pDate.min = todayStr; }
+  if (dDate) { dDate.value = tomorrowStr; dDate.min = todayStr; }
 
   populateDropdown();
   renderCake(cakeCatalog[0]);
@@ -85,7 +87,6 @@ function renderCake(cake) {
   const submitBtn = document.getElementById('submitBtn');
   const heroTag = document.getElementById('heroCategoryTag');
 
-  // Handle Sold Out UI
   if (!isAvailable) {
     heroImage.style.filter = "grayscale(85%) opacity(75%)";
     heroTag.innerText = "SOLD OUT";
@@ -159,11 +160,11 @@ function setPaymentMode(mode) {
   document.getElementById('payModeUPI').className = `pay-card ${mode === 'UPI' ? 'active' : ''}`;
   document.getElementById('payModeCOD').className = `pay-card ${mode === 'COD' ? 'active' : ''}`;
   document.getElementById('submitBtn').innerHTML = mode === 'UPI' 
-    ? '<span>⚡ PLACE ORDER VIA UPI</span>' 
+    ? '<span>⚡ PAY VIA UPI & ORDER</span>' 
     : '<span>📦 CONFIRM ORDER (PAY ON DELIVERY)</span>';
 }
 
-function getOrderPayload() {
+function validateAndExtractPayload() {
   const name = document.getElementById("customerName").value.trim();
   const phone = document.getElementById("customerPhone").value.trim();
   const cakeMsg = document.getElementById("cakeMessage").value.trim() || "No message requested";
@@ -218,15 +219,49 @@ function getOrderPayload() {
   };
 }
 
+// Order Entrypoint
 async function handleOrderPlacement() {
-  const payload = getOrderPayload();
+  const payload = validateAndExtractPayload();
   if (!payload) return;
+  pendingOrderPayload = payload;
 
-  const btn = document.getElementById("submitBtn");
-  const originalText = btn.innerHTML;
-  btn.innerHTML = "<span>⏳ Logging Order...</span>";
-  btn.style.opacity = "0.7";
+  if (paymentMethod === 'UPI') {
+    // 1. Launch UPI Intent without writing to sheet or downloading PDF yet
+    const note = `Order-${payload.orderId}`;
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(SHOP_UPI_ID)}&pn=${encodeURIComponent(SHOP_NAME)}&am=${payload.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
 
+    // Display the Verification Modal so customer confirms when returning
+    document.getElementById('modalUpiAmount').innerText = `₹${payload.amount}`;
+    document.getElementById('upiVerificationModal').style.display = 'flex';
+
+    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = upiUrl;
+    }
+  } else {
+    // 2. Pay on Delivery: Directly confirm and transition page
+    await finalizeAndRenderSuccess(payload, "Pay on Delivery / Pickup");
+  }
+}
+
+// User confirms they finished paying in their UPI App
+async function confirmUpiPaymentSuccess() {
+  const utrInput = document.getElementById('upiUtrInput').value.trim();
+  pendingOrderPayload.utr = utrInput || "Not Entered";
+  pendingOrderPayload.paymentMode = utrInput ? `UPI Paid (UTR: ${utrInput})` : "UPI Initiated / Paid";
+  
+  document.getElementById('upiVerificationModal').style.display = 'none';
+  await finalizeAndRenderSuccess(pendingOrderPayload, pendingOrderPayload.paymentMode);
+}
+
+function cancelUpiPaymentModal() {
+  document.getElementById('upiVerificationModal').style.display = 'none';
+  pendingOrderPayload = null;
+}
+
+// Writes to Sheet, downloads PDF, notifies Owner, and shows Success View
+async function finalizeAndRenderSuccess(payload, paymentStatus) {
+  // 1. Post to Google Sheet
   try {
     await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
@@ -238,11 +273,10 @@ async function handleOrderPlacement() {
     console.error("Sheet writing error:", e);
   }
 
+  // 2. Download PDF Invoice now that the order is confirmed
   generateTaxInvoicePDF(payload);
 
-  btn.innerHTML = originalText;
-  btn.style.opacity = "1";
-
+  // 3. Prepare Owner WhatsApp text
   const confirmTextForCustomer = encodeURIComponent(
     `Hello ${payload.customerName}, your order #${payload.orderId} at Chocolate Tree Cake Shop is RECEIVED & CONFIRMED!\n\n` +
     `🎂 Cake: ${payload.cakeName} (${payload.size})\n` +
@@ -264,32 +298,45 @@ async function handleOrderPlacement() {
     `✍️ *Message:* "${payload.messageOnCake}"\n` +
     `📅 *Schedule:* ${payload.slot}\n` +
     `💰 *Bill Amount:* ₹${payload.amount}\n` +
-    `💳 *Payment:* ${payload.paymentMode}\n` +
+    `💳 *Payment:* ${paymentStatus}\n` +
     `-----------------------------------------\n` +
     `👉 *Tap to Confirm with Customer:*\n` +
     `https://wa.me/91${payload.customerPhone}?text=${confirmTextForCustomer}`;
 
   const waOwnerUrl = `https://wa.me/${SHOP_WHATSAPP_NUMBER}?text=${encodeURIComponent(ownerTicket)}`;
 
-  if (paymentMethod === 'UPI') {
-    const note = `Order-${payload.orderId}`;
-    const upiUrl = `upi://pay?pa=${encodeURIComponent(SHOP_UPI_ID)}&pn=${encodeURIComponent(SHOP_NAME)}&am=${payload.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
+  // 4. Transform Form into a clean Success View
+  const formContainer = document.querySelector('.form-body');
+  formContainer.innerHTML = `
+    <div style="text-align: center; padding: 24px 10px; display: flex; flex-direction: column; align-items: center; gap: 14px;">
+      <div style="width: 60px; height: 60px; border-radius: 50%; background: #dcfce7; color: #166534; font-size: 32px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(22, 101, 52, 0.15);">
+        ✓
+      </div>
+      <h2 style="font-size: 22px; font-weight: 900; color: #2b1810; margin: 0;">Order Placed!</h2>
+      <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin: 0;">
+        Order <b>#${payload.orderId}</b> has been received.<br>
+        Your official tax bill (PDF) has been downloaded.
+      </p>
 
-    alert("✅ Order Logged & PDF Bill Downloaded!\n\nNow launching your UPI App to complete payment, then sending order details to bakery WhatsApp.");
+      <div style="width: 100%; background: #fbf5ee; border-radius: 14px; padding: 14px; text-align: left; font-size: 12px; display: flex; flex-direction: column; gap: 6px; margin: 8px 0; border: 1px solid #ebd9c8;">
+        <div><b>Customer:</b> ${payload.customerName}</div>
+        <div><b>Cake:</b> ${payload.cakeName} (${payload.size})</div>
+        <div><b>Scheduled For:</b> ${payload.slot}</div>
+        <div><b>Total Amount:</b> ₹${payload.amount} (${paymentStatus})</div>
+      </div>
 
-    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-    if (isMobile) {
-      window.location.href = upiUrl;
-      setTimeout(() => { window.location.href = waOwnerUrl; }, 2500);
-    } else {
-      window.location.href = waOwnerUrl;
-    }
-  } else {
-    alert("✅ Order Confirmed & PDF Bill Downloaded!\n\nSending order summary to the bakery on WhatsApp...");
-    window.location.href = waOwnerUrl;
-  }
+      <a href="${waOwnerUrl}" style="width: 100%; background: #25d366; color: #fff; text-decoration: none; padding: 14px; border-radius: 14px; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
+        💬 Notify Bakery on WhatsApp
+      </a>
+
+      <button onclick="window.location.reload()" style="background: transparent; border: none; color: #794d35; font-size: 12px; font-weight: 700; cursor: pointer; padding: 8px;">
+        ← Place Another Order
+      </button>
+    </div>
+  `;
 }
 
+// In-Browser PDF Generator
 function generateTaxInvoicePDF(data) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: "pt", format: "a4" });

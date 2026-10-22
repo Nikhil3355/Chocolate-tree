@@ -1,35 +1,43 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chocolate Tree Cake Shop - Direct Order & Bill</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+
   <!-- CSS Stylesheet -->
   <link rel="stylesheet" href="css/customer.css">
 
   <!-- Standalone jsPDF for in-browser invoice download -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
+
 <body>
 
   <div class="app-card">
 
     <header class="store-header">
       <svg class="shop-logo-svg" viewBox="0 0 420 135" xmlns="http://www.w3.org/2000/svg">
-        <rect x="5" y="5" width="410" height="125" rx="14" fill="#200d07" stroke="#482415" stroke-width="3"/>
-        <path d="M 5 35 Q 25 55 45 35 Q 65 52 85 35 Q 110 58 135 35 Q 160 55 185 35 Q 210 58 235 35 Q 260 55 285 35 Q 310 58 335 35 Q 360 52 385 35 Q 405 52 415 35 L 415 5 L 5 5 Z" fill="#ffffff" opacity="0.95"/>
+        <rect x="5" y="5" width="410" height="125" rx="14" fill="#200d07" stroke="#482415" stroke-width="3" />
+        <path
+          d="M 5 35 Q 25 55 45 35 Q 65 52 85 35 Q 110 58 135 35 Q 160 55 185 35 Q 210 58 235 35 Q 260 55 285 35 Q 310 58 335 35 Q 360 52 385 35 Q 405 52 415 35 L 415 5 L 5 5 Z"
+          fill="#ffffff" opacity="0.95" />
         <g text-anchor="middle">
-          <text x="210" y="63" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="44" fill="#ff7700" stroke="#ffffff" stroke-width="1.5" letter-spacing="3">CHOCOLATE</text>
+          <text x="210" y="63" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="44"
+            fill="#ff7700" stroke="#ffffff" stroke-width="1.5" letter-spacing="3">CHOCOLATE</text>
         </g>
         <g text-anchor="middle">
-          <path d="M 125 76 Q 210 94 295 76" fill="none" stroke="#ff7700" stroke-width="5" stroke-linecap="round"/>
-          <text x="210" y="96" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="30" fill="#ffffff" letter-spacing="6">TREE</text>
-          <rect x="150" y="104" width="120" height="18" rx="9" fill="#ff7700"/>
-          <text x="210" y="117" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="11" fill="#ffffff" letter-spacing="2">CAKE SHOP</text>
+          <path d="M 125 76 Q 210 94 295 76" fill="none" stroke="#ff7700" stroke-width="5" stroke-linecap="round" />
+          <text x="210" y="96" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="30"
+            fill="#ffffff" letter-spacing="6">TREE</text>
+          <rect x="150" y="104" width="120" height="18" rx="9" fill="#ff7700" />
+          <text x="210" y="117" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="11"
+            fill="#ffffff" letter-spacing="2">CAKE SHOP</text>
         </g>
       </svg>
 
@@ -47,7 +55,8 @@
     </div>
 
     <div class="hero-banner">
-      <img id="heroImage" src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80" alt="Cake" />
+      <img id="heroImage"
+        src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80" alt="Cake" />
       <div class="hero-gradient">
         <div class="badge-row">
           <span class="tag-eggless">100% Eggless Option</span>
@@ -59,7 +68,7 @@
     </div>
 
     <div class="form-body">
-      
+
       <!-- 1. Size Selection -->
       <div>
         <label class="field-label">1. Choose Size</label>
@@ -69,7 +78,8 @@
       <!-- 2. Message on Cake -->
       <div>
         <label for="cakeMessage" class="field-label">2. Name / Message on Cake</label>
-        <input type="text" id="cakeMessage" maxlength="42" placeholder="e.g., Happy Birthday Aarav!" class="text-input" />
+        <input type="text" id="cakeMessage" maxlength="42" placeholder="e.g., Happy Birthday Aarav!"
+          class="text-input" />
         <p class="field-hint">Piped in fresh chocolate lettering</p>
       </div>
 
@@ -112,7 +122,9 @@
         </div>
         <div>
           <label for="deliveryAddress" class="field-label">Full Street Address &amp; Landmark</label>
-          <textarea id="deliveryAddress" rows="2" placeholder="Flat No., Society / Building, Near Landmark, Area, Pincode" class="text-input" style="resize: none;"></textarea>
+          <textarea id="deliveryAddress" rows="2"
+            placeholder="Flat No., Society / Building, Near Landmark, Area, Pincode" class="text-input"
+            style="resize: none;"></textarea>
         </div>
       </div>
 
@@ -166,10 +178,39 @@
 
     </div>
   </div>
+  <!-- UPI Payment Completion Verification Modal -->
+  <div id="upiVerificationModal"
+    style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; justify-content: center; align-items: flex-end; padding: 12px;">
+    <div
+      style="width: 100%; max-width: 420px; background: #fff; border-radius: 24px; padding: 24px 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+      <h3 style="font-size: 18px; font-weight: 900; color: #2b1810; margin: 0;">Payment Verification</h3>
+      <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin: 0;">
+        Did you complete your payment of <b id="modalUpiAmount" style="color: #ff7700;">₹700</b> in your UPI app?
+      </p>
+
+      <div>
+        <label
+          style="font-size: 11px; font-weight: 800; color: #633b26; text-transform: uppercase; margin-bottom: 4px; display: block;">UPI
+          Reference / UTR (Optional)</label>
+        <input type="text" id="upiUtrInput" maxlength="12" placeholder="e.g., 428901234567" class="text-input"
+          style="letter-spacing: 1px;" />
+      </div>
+
+      <button type="button" class="btn-main" onclick="confirmUpiPaymentSuccess()">
+        <span>✅ YES, I HAVE PAID</span>
+      </button>
+
+      <button type="button" onclick="cancelUpiPaymentModal()"
+        style="border: none; background: transparent; color: #94a3b8; font-size: 12px; font-weight: 700; cursor: pointer; padding: 6px;">
+        ❌ Cancelled / Payment Failed
+      </button>
+    </div>
+  </div>
 
   <!-- Scripts in dependency order -->
   <script src="js/config.js"></script>
   <script src="js/data.js"></script>
   <script src="js/customer.js"></script>
 </body>
+
 </html>

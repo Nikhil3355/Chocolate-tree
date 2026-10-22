@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chocolate Tree Cake Shop - Direct Order Link</title>
+  <title>Chocolate Tree Cake Shop - Direct Order & Bill</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   
+  <!-- Standalone jsPDF for in-browser invoice download -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
   <style>
-    /* ---------------- Reset & Base Typography ---------------- */
     *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
@@ -27,7 +29,6 @@
       padding: 12px 10px 40px;
     }
 
-    /* ---------------- Main Mobile Container ---------------- */
     .app-card {
       width: 100%;
       max-width: 440px;
@@ -39,14 +40,13 @@
       flex-direction: column;
     }
 
-    /* ---------------- Storefront Header & Logo ---------------- */
+    /* Store Header */
     .store-header {
       background: linear-gradient(180deg, #23120b 0%, #3a1c11 100%);
       padding: 18px 20px 14px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      position: relative;
       border-bottom: 3px solid #ff7700;
     }
 
@@ -67,7 +67,6 @@
       text-transform: uppercase;
       padding: 4px 14px;
       border-radius: 9999px;
-      box-shadow: 0 2px 8px rgba(255, 119, 0, 0.4);
       display: flex;
       align-items: center;
       gap: 6px;
@@ -81,7 +80,7 @@
       opacity: 0.8;
     }
 
-    /* ---------------- Cake Selection Dropdown ---------------- */
+    /* Selector */
     .selector-bar {
       padding: 14px 18px;
       background: #fbf5ee;
@@ -112,19 +111,12 @@
       border-radius: 14px;
       outline: none;
       cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-      transition: border-color 0.2s, box-shadow 0.2s;
     }
 
-    .cake-dropdown:focus {
-      border-color: #ff7700;
-      box-shadow: 0 0 0 3px rgba(255, 119, 0, 0.15);
-    }
-
-    /* ---------------- Dynamic Hero Cake Image & Badge ---------------- */
+    /* Hero Banner */
     .hero-banner {
       position: relative;
-      height: 230px;
+      height: 220px;
       background-color: #3b2014;
       overflow: hidden;
     }
@@ -133,7 +125,6 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.4s ease;
     }
 
     .hero-gradient {
@@ -151,7 +142,6 @@
       display: flex;
       gap: 6px;
       margin-bottom: 6px;
-      flex-wrap: wrap;
     }
 
     .tag-eggless {
@@ -161,26 +151,23 @@
       font-weight: 800;
       padding: 3px 8px;
       border-radius: 6px;
-      letter-spacing: 0.04em;
       text-transform: uppercase;
     }
 
     .tag-category {
-      background: rgba(255, 119, 0, 0.9);
+      background: #ff7700;
       color: #ffffff;
       font-size: 10px;
       font-weight: 800;
       padding: 3px 8px;
       border-radius: 6px;
-      letter-spacing: 0.04em;
       text-transform: uppercase;
     }
 
     .hero-title {
-      font-size: 21px;
+      font-size: 20px;
       font-weight: 800;
       line-height: 1.2;
-      color: #ffffff;
     }
 
     .hero-subtitle {
@@ -189,7 +176,7 @@
       margin-top: 3px;
     }
 
-    /* ---------------- Interactive Configuration Form ---------------- */
+    /* Form */
     .form-body {
       padding: 20px;
       display: flex;
@@ -207,7 +194,6 @@
       display: block;
     }
 
-    /* Size / Weight Selection Cards */
     .weight-options-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -222,7 +208,6 @@
       text-align: center;
       cursor: pointer;
       transition: all 0.2s ease;
-      position: relative;
     }
 
     .size-btn.active {
@@ -235,38 +220,14 @@
       opacity: 0.4;
       pointer-events: none;
       background: #f1f1f1;
-      border-color: #e5e5e5;
     }
 
-    .size-name {
-      font-size: 13px;
-      font-weight: 800;
-      color: #2b1810;
-    }
+    .size-name { font-size: 13px; font-weight: 800; }
+    .size-approx { font-size: 9px; font-weight: 600; color: #926f5b; margin-top: 1px; }
+    .size-price { font-size: 13px; font-weight: 800; margin-top: 4px; }
+    .size-btn.active .size-name { color: #ff7700; }
+    .size-btn.active .size-price { color: #9a3412; }
 
-    .size-btn.active .size-name {
-      color: #ff7700;
-    }
-
-    .size-approx {
-      font-size: 9px;
-      font-weight: 600;
-      color: #926f5b;
-      margin-top: 1px;
-    }
-
-    .size-price {
-      font-size: 13px;
-      font-weight: 800;
-      color: #2b1810;
-      margin-top: 4px;
-    }
-
-    .size-btn.active .size-price {
-      color: #9a3412;
-    }
-
-    /* Input Fields */
     .text-input, .select-input {
       width: 100%;
       padding: 11px 14px;
@@ -277,17 +238,10 @@
       font-weight: 600;
       color: #2b1810;
       outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
     }
 
     .text-input:focus, .select-input:focus {
       border-color: #ff7700;
-      box-shadow: 0 0 0 3px rgba(255, 119, 0, 0.15);
-    }
-
-    .text-input::placeholder {
-      color: #bfa999;
-      font-weight: 400;
     }
 
     .field-hint {
@@ -296,18 +250,13 @@
       margin-top: 4px;
     }
 
-    /* 2-Column Schedule Grid */
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
     }
 
-    /* Phone with country code prefix */
-    .phone-box {
-      position: relative;
-    }
-
+    .phone-box { position: relative; }
     .phone-code {
       position: absolute;
       left: 14px;
@@ -317,57 +266,69 @@
       font-weight: 800;
       color: #8c6a54;
     }
+    .phone-box input { padding-left: 48px; }
 
-    .phone-box input {
-      padding-left: 48px;
+    /* Switcher Pills */
+    .segmented-control {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: #ebdccb;
+      padding: 4px;
+      border-radius: 14px;
     }
 
-    /* Preferences Toggle */
-    .pref-row {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      background: #fbf5ee;
-      padding: 10px 14px;
-      border-radius: 12px;
-      border: 1px solid #eedecf;
-    }
-
-    .pref-label {
+    .segment-btn {
+      border: none;
+      background: transparent;
+      padding: 9px 6px;
       font-size: 12px;
-      font-weight: 700;
-      color: #3b2014;
-      flex: 1;
-    }
-
-    .switch-pill {
-      display: flex;
-      background: #eed9c7;
-      padding: 3px;
-      border-radius: 9999px;
-      cursor: pointer;
-    }
-
-    .pill-opt {
-      padding: 4px 10px;
-      border-radius: 9999px;
-      font-size: 11px;
       font-weight: 800;
-      color: #553322;
+      color: #5d3928;
+      border-radius: 10px;
+      cursor: pointer;
       transition: all 0.2s;
     }
 
-    .pill-opt.selected {
-      background: #166534;
-      color: #ffffff;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    .segment-btn.active {
+      background: #ffffff;
+      color: #ff7700;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
 
-    /* Total and Action Buttons */
+    /* Payment Cards */
+    .pay-methods {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .pay-card {
+      border: 2px solid #ebd9c8;
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 10px 8px;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .pay-card.active {
+      border-color: #ff7700;
+      background: #fff8f0;
+    }
+
+    .pay-card-icon { font-size: 17px; }
+    .pay-card-title { font-size: 12px; font-weight: 800; color: #2b1810; }
+    .pay-card-desc { font-size: 9px; color: #8c6a54; font-weight: 600; }
+
+    /* Total & Action */
     .bill-section {
       padding-top: 14px;
       border-top: 2px dashed #eedecf;
-      margin-top: 4px;
     }
 
     .bill-row {
@@ -377,22 +338,10 @@
       margin-bottom: 12px;
     }
 
-    .bill-tag {
-      font-size: 12px;
-      font-weight: 700;
-      color: #794d35;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
+    .bill-tag { font-size: 12px; font-weight: 700; color: #794d35; text-transform: uppercase; }
+    .bill-total { font-size: 28px; font-weight: 900; color: #2b1810; }
 
-    .bill-total {
-      font-size: 28px;
-      font-weight: 900;
-      color: #2b1810;
-    }
-
-    /* Primary UPI Button */
-    .btn-upi {
+    .btn-main {
       width: 100%;
       background: linear-gradient(135deg, #ff7700 0%, #e65c00 100%);
       color: #ffffff;
@@ -401,43 +350,16 @@
       border-radius: 14px;
       font-size: 15px;
       font-weight: 900;
-      letter-spacing: 0.04em;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       box-shadow: 0 6px 18px rgba(230, 92, 0, 0.35);
-      transition: transform 0.1s ease, filter 0.2s;
+      transition: transform 0.1s ease;
     }
 
-    .btn-upi:active {
-      transform: scale(0.98);
-      filter: brightness(0.95);
-    }
-
-    /* Secondary WhatsApp Button (Backup for Call Confirmation) */
-    .btn-wa {
-      width: 100%;
-      margin-top: 8px;
-      background: #25d366;
-      color: #ffffff;
-      border: none;
-      padding: 12px;
-      border-radius: 14px;
-      font-size: 13px;
-      font-weight: 800;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      box-shadow: 0 4px 10px rgba(37, 211, 102, 0.25);
-    }
-
-    .btn-wa:active {
-      transform: scale(0.98);
-    }
+    .btn-main:active { transform: scale(0.98); }
 
     .footer-guarantee {
       text-align: center;
@@ -450,70 +372,41 @@
 </head>
 <body>
 
-  <!-- Mobile Card Wrapper -->
   <div class="app-card">
 
-    <!-- Storefront Header with Inline SVG Logo -->
     <header class="store-header">
-      <!-- Custom Inline SVG Logo replicating the shop board -->
       <svg class="shop-logo-svg" viewBox="0 0 420 135" xmlns="http://www.w3.org/2000/svg">
-        <!-- Background Shadow Board -->
         <rect x="5" y="5" width="410" height="125" rx="14" fill="#200d07" stroke="#482415" stroke-width="3"/>
-        
-        <!-- Dripping Frosting Effect on Top of Logo -->
         <path d="M 5 35 Q 25 55 45 35 Q 65 52 85 35 Q 110 58 135 35 Q 160 55 185 35 Q 210 58 235 35 Q 260 55 285 35 Q 310 58 335 35 Q 360 52 385 35 Q 405 52 415 35 L 415 5 L 5 5 Z" fill="#ffffff" opacity="0.95"/>
-        <circle cx="95" cy="54" r="5" fill="#ffffff" opacity="0.95"/>
-        <circle cx="225" cy="55" r="4.5" fill="#ffffff" opacity="0.95"/>
-        <circle cx="340" cy="56" r="4" fill="#ffffff" opacity="0.95"/>
-
-        <!-- CHOCOLATE 3D Text -->
         <g text-anchor="middle">
-          <!-- Shadow layer -->
-          <text x="210" y="66" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="44" fill="#150804" letter-spacing="3">CHOCOLATE</text>
-          <!-- Front orange gradient layer -->
           <text x="210" y="63" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="44" fill="#ff7700" stroke="#ffffff" stroke-width="1.5" letter-spacing="3">CHOCOLATE</text>
-          <text x="210" y="61" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="44" fill="#ffa23a" letter-spacing="3">CHOCOLATE</text>
         </g>
-
-        <!-- TREE Sub-text with bakery swoosh -->
         <g text-anchor="middle">
-          <!-- Orange arc background -->
           <path d="M 125 76 Q 210 94 295 76" fill="none" stroke="#ff7700" stroke-width="5" stroke-linecap="round"/>
           <text x="210" y="96" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="30" fill="#ffffff" letter-spacing="6">TREE</text>
-          
-          <!-- Cake Shop Subtag banner -->
           <rect x="150" y="104" width="120" height="18" rx="9" fill="#ff7700"/>
           <text x="210" y="117" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="11" fill="#ffffff" letter-spacing="2">CAKE SHOP</text>
         </g>
       </svg>
 
-      <!-- Shop Specialties Ribbon -->
       <div class="sub-ribbon">
-        <span>Cakes</span>
-        <span class="dot"></span>
-        <span>Chocolate</span>
-        <span class="dot"></span>
-        <span>Ice Cream</span>
+        <span>Cakes</span><span class="dot"></span><span>Chocolate</span><span class="dot"></span><span>Ice Cream</span>
       </div>
     </header>
 
-    <!-- Cake Selector (Allows caller to switch cakes from the call) -->
     <div class="selector-bar">
       <div class="selector-label">
         <span>Selected Cake</span>
-        <span id="cakeCountBadge">24 Varieties</span>
+        <span id="menuCountBadge">Loading Catalog...</span>
       </div>
-      <select id="cakeSelector" class="cake-dropdown" onchange="onCakeChange(this.value)">
-        <!-- Options populated dynamically from catalog -->
-      </select>
+      <select id="cakeSelector" class="cake-dropdown" onchange="onCakeChange(this.value)"></select>
     </div>
 
-    <!-- Hero Image Banner of Selected Cake -->
     <div class="hero-banner">
-      <img id="heroImage" src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80" alt="Cake Display" />
+      <img id="heroImage" src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80" alt="Cake" />
       <div class="hero-gradient">
         <div class="badge-row">
-          <span class="tag-eggless" id="heroEgglessTag">Eggless Available</span>
+          <span class="tag-eggless">100% Eggless Option</span>
           <span class="tag-category" id="heroCategoryTag">Chocolate Specialty</span>
         </div>
         <h1 class="hero-title" id="heroTitle">Dutch Truffle Royal Chocolate</h1>
@@ -521,333 +414,186 @@
       </div>
     </div>
 
-    <!-- Order Configuration Form -->
     <div class="form-body">
-
-      <!-- 1. Size / Weight Selection Cards -->
+      
+      <!-- 1. Size Selection -->
       <div>
-        <label class="field-label">1. Choose Size &amp; Weight</label>
-        <div class="weight-options-grid" id="weightContainer">
-          <!-- Dynamically populated size buttons -->
-        </div>
+        <label class="field-label">1. Choose Size</label>
+        <div class="weight-options-grid" id="weightContainer"></div>
       </div>
 
-      <!-- 2. Eggless or Regular Preference -->
-      <div class="pref-row">
-        <span class="pref-label">Eggless Preparation</span>
-        <div class="switch-pill">
-          <span class="pill-opt selected" id="egglessYes" onclick="setEggless(true)">100% Veg</span>
-          <span class="pill-opt" id="egglessNo" onclick="setEggless(false)">Regular</span>
-        </div>
-      </div>
-
-      <!-- 3. Message on Cake -->
+      <!-- 2. Message on Cake -->
       <div>
         <label for="cakeMessage" class="field-label">2. Name / Message on Cake</label>
-        <input 
-          type="text" 
-          id="cakeMessage" 
-          maxlength="42" 
-          placeholder="e.g., Happy Birthday Aarav!" 
-          class="text-input"
-        />
-        <p class="field-hint">Piped fresh in premium chocolate lettering</p>
+        <input type="text" id="cakeMessage" maxlength="42" placeholder="e.g., Happy Birthday Aarav!" class="text-input" />
+        <p class="field-hint">Piped in fresh chocolate lettering</p>
       </div>
 
-      <!-- 4. Pickup Date and Time -->
-      <div class="grid-2">
+      <!-- 3. Fulfillment Method Toggle -->
+      <div>
+        <label class="field-label">3. Order Fulfillment</label>
+        <div class="segmented-control">
+          <button type="button" class="segment-btn active" id="btnPickup" onclick="setFulfillment('pickup')">
+            🏬 Store Pickup
+          </button>
+          <button type="button" class="segment-btn" id="btnDelivery" onclick="setFulfillment('delivery')">
+            🛵 Home Delivery
+          </button>
+        </div>
+      </div>
+
+      <!-- Pickup Schedule (shown when Store Pickup is active) -->
+      <div id="pickupScheduleBlock" class="grid-2">
         <div>
-          <label for="pickupDate" class="field-label">3. Pickup Date</label>
+          <label for="pickupDate" class="field-label">Pickup Date</label>
           <input type="date" id="pickupDate" class="text-input" />
         </div>
         <div>
           <label for="pickupTime" class="field-label">Time Slot</label>
           <select id="pickupTime" class="select-input">
-            <option value="11:00 AM - 01:00 PM">11 AM - 01 PM</option>
-            <option value="01:00 PM - 03:00 PM">01 PM - 03 PM</option>
-            <option value="03:00 PM - 05:00 PM">03 PM - 05 PM</option>
-            <option value="05:00 PM - 07:00 PM" selected>05 PM - 07 PM</option>
-            <option value="07:00 PM - 09:30 PM">07 PM - 09:30 PM</option>
+            <option value="11 AM - 01 PM">11 AM - 01 PM</option>
+            <option value="01 PM - 03 PM">01 PM - 03 PM</option>
+            <option value="03 PM - 05 PM">03 PM - 05 PM</option>
+            <option value="05 PM - 07 PM" selected>05 PM - 07 PM</option>
+            <option value="07 PM - 09:30 PM">07 PM - 09:30 PM</option>
           </select>
         </div>
       </div>
 
-      <!-- 5. Customer Phone Number -->
-      <div>
-        <label for="customerPhone" class="field-label">4. Your Mobile Number</label>
-        <div class="phone-box">
-          <span class="phone-code">+91</span>
-          <input 
-            type="tel" 
-            id="customerPhone" 
-            maxlength="10" 
-            placeholder="98765 43210" 
-            class="text-input"
-          />
+      <!-- Delivery Address Fields (shown when Home Delivery is active) -->
+      <div id="deliveryAddressBlock" style="display: none; flex-direction: column; gap: 10px;">
+        <div>
+          <label for="deliveryDate" class="field-label">Delivery Date</label>
+          <input type="date" id="deliveryDate" class="text-input" />
         </div>
-        <p class="field-hint">For order token and pickup verification</p>
+        <div>
+          <label for="deliveryAddress" class="field-label">Full Street Address &amp; Landmark</label>
+          <textarea id="deliveryAddress" rows="2" placeholder="Flat No., Society / Building, Near Landmark, Area, Pincode" class="text-input" style="resize: none;"></textarea>
+        </div>
       </div>
 
-      <!-- Bill & Action Section -->
+      <!-- 4. Customer Name -->
+      <div>
+        <label for="customerName" class="field-label">4. Your Full Name</label>
+        <input type="text" id="customerName" placeholder="e.g., Rohit Sharma" class="text-input" />
+      </div>
+
+      <!-- 5. Customer Phone -->
+      <div>
+        <label for="customerPhone" class="field-label">5. Mobile Number</label>
+        <div class="phone-box">
+          <span class="phone-code">+91</span>
+          <input type="tel" id="customerPhone" maxlength="10" placeholder="98765 43210" class="text-input" />
+        </div>
+      </div>
+
+      <!-- 6. Payment Method Selector -->
+      <div>
+        <label class="field-label">6. Payment Method</label>
+        <div class="pay-methods">
+          <div class="pay-card active" id="payModeUPI" onclick="setPaymentMode('UPI')">
+            <div class="pay-card-icon">⚡</div>
+            <div class="pay-card-title">Instant UPI</div>
+            <div class="pay-card-desc">GPay • PhonePe • Paytm</div>
+          </div>
+          <div class="pay-card" id="payModeCOD" onclick="setPaymentMode('COD')">
+            <div class="pay-card-icon">💵</div>
+            <div class="pay-card-title">Pay on Delivery/Pickup</div>
+            <div class="pay-card-desc">Cash or UPI at Delivery</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bill & Submit -->
       <div class="bill-section">
         <div class="bill-row">
-          <span class="bill-tag">Total Payable</span>
+          <span class="bill-tag">Total Bill</span>
           <span class="bill-total" id="billDisplay">₹700</span>
         </div>
 
-        <!-- 1-Tap UPI Launch Button -->
-        <button class="btn-upi" type="button" onclick="triggerUPI()">
-          <span>⚡ PAY VIA UPI &amp; PLACE ORDER</span>
-        </button>
-
-        <!-- Secondary WhatsApp Order Backup -->
-        <button class="btn-wa" type="button" onclick="sendViaWhatsApp()">
-          <span>💬 Send Details to Shop WhatsApp</span>
+        <button class="btn-main" type="button" id="submitBtn" onclick="handleOrderPlacement()">
+          <span>⚡ PLACE ORDER VIA UPI</span>
         </button>
 
         <p class="footer-guarantee">
-          Direct payment to <b>Chocolate Tree Cake Shop</b> via GPay / PhonePe / Paytm
+          Instant PDF Bill Download • Order Confirmation on WhatsApp
         </p>
       </div>
 
     </div>
-
   </div>
 
-  <!-- Application Logic & Data -->
- <!-- Application Logic & Data -->
   <script>
+    // Configuration
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyKPjXEKyWYG_kPUrjRhlYxdbGqIm9iqQkklB-KQTt5XpSIe7VPS3ZcNkeFEBy69K64/exec";
     const SHOP_UPI_ID = "8554034632@ybl";
     const SHOP_NAME = "Chocolate Tree Cake Shop";
     const SHOP_WHATSAPP_NUMBER = "918554034632";
 
-    // -------------------------------------------------------------
-    // Full Catalog Extracted from Chocolate Tree Cake Shop Menus
-    // -------------------------------------------------------------
-    const cakeCatalog = [
-      // Category 1: Chocolate Specialties
-      {
-        id: "dutch-truffle-royal",
-        name: "Dutch Truffle Royal Chocolate Cake",
-        category: "Chocolate Specialty",
-        image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 135, small: 700, large: 1400 },
-        desc: "Rich dark ganache with chocolate crown & luxury ring garnish"
-      },
-      {
-        id: "classic-dutch-chocolate",
-        name: "Classic Dutch Chocolate Cake",
-        category: "Chocolate Specialty",
-        image: "https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 85, small: 450, large: 900 },
-        desc: "Smooth Dutch cocoa sponge with glossy chocolate glaze"
-      },
-      {
-        id: "chocolate-double-delight",
-        name: "Chocolate Double Delight Cake",
-        category: "Chocolate Specialty",
-        image: "https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 110, small: 570, large: 1140 },
-        desc: "Double layered dark & milk chocolate delight"
-      },
-      {
-        id: "dairy-milk-chocolate",
-        name: "Dairy Milk Chocolate Cake",
-        category: "Chocolate Specialty",
-        image: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 115, small: 570, large: 1140 },
-        desc: "Loaded with Cadbury Dairy Milk chunks and creamy chocolate swirl"
-      },
-      {
-        id: "ferrero-rocher-chocolate",
-        name: "Ferrero Rocher Chocolate Cake",
-        category: "Chocolate Specialty",
-        image: "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: null, small: 620, large: 1240 },
-        desc: "Crispy wafer chocolate collar with roasted hazelnut ganache"
-      },
-      {
-        id: "almond-hazelnut-chocolate",
-        name: "Almond Hazelnut Chocolate Cake",
-        category: "Chocolate Specialty",
-        image: "https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 130, small: 600, large: 1200 },
-        desc: "Crushed roasted almonds with smooth hazelnut chocolate cream"
-      },
-      {
-        id: "nutella-chocolate",
-        name: "Nutella Chocolate Cake",
-        category: "Chocolate Specialty",
-        image: "https://images.unsplash.com/photo-1548848221-0c2e497ed557?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 120, small: 650, large: 1300 },
-        desc: "Creamy hazelnut Nutella spread over chocolate sponge"
-      },
-      {
-        id: "chocolate-fantasy",
-        name: "Chocolate Fantasy Cake",
-        category: "Chocolate Specialty",
-        image: "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 90, small: 480, large: 960 },
-        desc: "Classic chocolate fantasy topped with dark chocolate curls"
-      },
-      {
-        id: "kit-kat-cake",
-        name: "Kit Kat Cake",
-        category: "Chocolate Specialty",
-        image: "https://images.unsplash.com/photo-1621303837174-89787a7d4729?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 100, small: 550, large: 1100 },
-        desc: "Crunchy Kit Kat wafer bars on top of moist chocolate base"
-      },
-      {
-        id: "chocolate-delight",
-        name: "Chocolate Delight Cake",
-        category: "Chocolate Specialty",
-        image: "https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 75, small: 390, large: 780 },
-        desc: "Smooth creamy chocolate piped cake for every celebration"
-      },
-      {
-        id: "dutch-truffle-delight",
-        name: "Dutch Truffle Delight Cake",
-        category: "Chocolate Specialty",
-        image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: null, small: 425, large: 850 },
-        desc: "Signature smooth Dutch cocoa truffle texture"
-      },
-      {
-        id: "chocolate-tiramisu",
-        name: "Chocolate Tiramisu Cake",
-        category: "Chocolate Specialty",
-        image: "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: null, small: 520, large: 1140 },
-        desc: "Infused with rich coffee espresso notes and chocolate dust"
-      },
+    let fulfillmentType = 'pickup'; // 'pickup' or 'delivery'
+    let paymentMethod = 'UPI';      // 'UPI' or 'COD'
 
-      // Category 2: Premium & International
-      {
-        id: "chocolate-belgium",
-        name: "Chocolate Belgium Cake",
-        category: "Premium Cake",
-        image: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 150, small: 800, large: 1600 },
-        desc: "Imported Belgian cocoa ganache with delicate decorative fans"
-      },
-      {
-        id: "belgium-chocolate-premium",
-        name: "Belgium Chocolate Premium Cake",
-        category: "Premium Cake",
-        image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: null, small: 900, large: 1800 },
-        desc: "Velvety half-mirror, half-matte dark cocoa pod masterpiece"
-      },
-      {
-        id: "belgium-crackle",
-        name: "Belgium Crackle Cake",
-        category: "Premium Cake",
-        image: "https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: null, small: 600, large: 1200 },
-        desc: "Crispy caramelized crackle center coated in mirror glaze"
-      },
-      {
-        id: "roasted-almonds-chocolate",
-        name: "Roasted Almonds Chocolate Cake",
-        category: "Premium Cake",
-        image: "https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 180, small: 750, large: 1500 },
-        desc: "Topped with crunchy golden roasted almonds and a satin bow collar"
-      },
-      {
-        id: "ferrero-rocher-premium",
-        name: "Ferrero Rocher Chocolate Premium Cake",
-        category: "Premium Cake",
-        image: "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: null, small: 1000, large: 2000 },
-        desc: "Whole Ferrero Rocher truffles with thick hazelnut chocolate fudge"
-      },
-      {
-        id: "pista-kunafa",
-        name: "Pista Kunafa Cake",
-        category: "Kunafa Special",
-        image: "https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 165, small: 1320, large: null },
-        desc: "Crispy kataifi kunafa pastry layered with rich pistachio cream"
-      },
-      {
-        id: "biscoff-kunafa",
-        name: "Biscoff Kunafa Cake",
-        category: "Kunafa Special",
-        image: "https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 145, small: 1160, large: null },
-        desc: "Lotus Biscoff cookie spread layered on toasted golden kunafa"
-      },
-
-      // Category 3: Fruity & Indian Fusion
-      {
-        id: "rasmalai-cake",
-        name: "Rasmalai Cake",
-        category: "Indian Fusion",
-        image: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 135, small: 700, large: 1400 },
-        desc: "Cardamom cream infused sponge topped with juicy rasmalai & saffron"
-      },
-      {
-        id: "shahi-rasgulla",
-        name: "Shahi Rasgulla Cake",
-        category: "Indian Fusion",
-        image: "https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 90, small: 600, large: 1200 },
-        desc: "Traditional royal rasgulla layered in soft rose petal cream"
-      },
-      {
-        id: "rose-falooda",
-        name: "Rose Falooda Cake",
-        category: "Indian Fusion",
-        image: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 100, small: 470, large: 940 },
-        desc: "Fragrant rose cream, sabja seeds & almond sliver toppings"
-      },
-      {
-        id: "pineapple-cake",
-        name: "Pineapple Cake",
-        category: "Fresh & Fruity",
-        image: "https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 75, small: 350, large: 700 },
-        desc: "Light vanilla sponge loaded with juicy pineapple chunks"
-      },
-      {
-        id: "butterscotch-cake",
-        name: "Butterscotch Cake",
-        category: "Fresh & Fruity",
-        image: "https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 80, small: 400, large: 800 },
-        desc: "Golden caramel sauce topped with crunchy praline butterscotch nuts"
-      },
-      {
-        id: "exotic-fruit-cake",
-        name: "Exotic Fruit Cake",
-        category: "Fresh & Fruity",
-        image: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: null, small: 570, large: 1140 },
-        desc: "Crown of fresh kiwi, orange, cherries, and seasonal fruits"
-      },
-      {
-        id: "mix-fruit-premium",
-        name: "Mix Fruit Premium Cake",
-        category: "Fresh & Fruity",
-        image: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=800&q=80",
-        prices: { pastry: 240, small: 650, large: 1300 },
-        desc: "Roasted almond sides with fresh assorted exotic fruits"
-      }
+    // Static fallback catalog in case the network fails
+    let cakeCatalog = [
+      { id: "dutch-truffle-royal", name: "Dutch Truffle Royal Chocolate Cake", category: "Chocolate Specialty", image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80", prices: { pastry: 135, small: 700, large: 1400 }, desc: "Rich dark ganache with chocolate crown & luxury ring garnish" },
+      { id: "classic-dutch-chocolate", name: "Classic Dutch Chocolate Cake", category: "Chocolate Specialty", image: "https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?auto=format&fit=crop&w=800&q=80", prices: { pastry: 85, small: 450, large: 900 }, desc: "Smooth Dutch cocoa sponge with glossy chocolate glaze" },
+      { id: "chocolate-double-delight", name: "Chocolate Double Delight Cake", category: "Chocolate Specialty", image: "https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?auto=format&fit=crop&w=800&q=80", prices: { pastry: 110, small: 570, large: 1140 }, desc: "Double layered dark & milk chocolate delight" },
+      { id: "dairy-milk-chocolate", name: "Dairy Milk Chocolate Cake", category: "Chocolate Specialty", image: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?auto=format&fit=crop&w=800&q=80", prices: { pastry: 115, small: 570, large: 1140 }, desc: "Loaded with Cadbury Dairy Milk chunks and creamy chocolate swirl" },
+      { id: "ferrero-rocher-chocolate", name: "Ferrero Rocher Chocolate Cake", category: "Chocolate Specialty", image: "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=800&q=80", prices: { pastry: null, small: 620, large: 1240 }, desc: "Crispy wafer chocolate collar with roasted hazelnut ganache" },
+      { id: "almond-hazelnut-chocolate", name: "Almond Hazelnut Chocolate Cake", category: "Chocolate Specialty", image: "https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=800&q=80", prices: { pastry: 130, small: 600, large: 1200 }, desc: "Crushed roasted almonds with smooth hazelnut chocolate cream" },
+      { id: "nutella-chocolate", name: "Nutella Chocolate Cake", category: "Chocolate Specialty", image: "https://images.unsplash.com/photo-1548848221-0c2e497ed557?auto=format&fit=crop&w=800&q=80", prices: { pastry: 120, small: 650, large: 1300 }, desc: "Creamy hazelnut Nutella spread over chocolate sponge" },
+      { id: "chocolate-fantasy", name: "Chocolate Fantasy Cake", category: "Chocolate Specialty", image: "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=800&q=80", prices: { pastry: 90, small: 480, large: 960 }, desc: "Classic chocolate fantasy topped with dark chocolate curls" },
+      { id: "kit-kat-cake", name: "Kit Kat Cake", category: "Chocolate Specialty", image: "https://images.unsplash.com/photo-1621303837174-89787a7d4729?auto=format&fit=crop&w=800&q=80", prices: { pastry: 100, small: 550, large: 1100 }, desc: "Crunchy Kit Kat wafer bars on top of moist chocolate base" },
+      { id: "chocolate-delight", name: "Chocolate Delight Cake", category: "Chocolate Specialty", image: "https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?auto=format&fit=crop&w=800&q=80", prices: { pastry: 75, small: 390, large: 780 }, desc: "Smooth creamy chocolate piped cake for every celebration" },
+      { id: "dutch-truffle-delight", name: "Dutch Truffle Delight Cake", category: "Chocolate Specialty", image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80", prices: { pastry: null, small: 425, large: 850 }, desc: "Signature smooth Dutch cocoa truffle texture" },
+      { id: "chocolate-tiramisu", name: "Chocolate Tiramisu Cake", category: "Chocolate Specialty", image: "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=800&q=80", prices: { pastry: null, small: 520, large: 1140 }, desc: "Infused with rich coffee espresso notes and chocolate dust" },
+      { id: "chocolate-belgium", name: "Chocolate Belgium Cake", category: "Premium Cake", image: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?auto=format&fit=crop&w=800&q=80", prices: { pastry: 150, small: 800, large: 1600 }, desc: "Imported Belgian cocoa ganache with delicate decorative fans" },
+      { id: "belgium-chocolate-premium", name: "Belgium Chocolate Premium Cake", category: "Premium Cake", image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80", prices: { pastry: null, small: 900, large: 1800 }, desc: "Velvety half-mirror, half-matte dark cocoa pod masterpiece" },
+      { id: "belgium-crackle", name: "Belgium Crackle Cake", category: "Premium Cake", image: "https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?auto=format&fit=crop&w=800&q=80", prices: { pastry: null, small: 600, large: 1200 }, desc: "Crispy caramelized crackle center coated in mirror glaze" },
+      { id: "roasted-almonds-chocolate", name: "Roasted Almonds Chocolate Cake", category: "Premium Cake", image: "https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=800&q=80", prices: { pastry: 180, small: 750, large: 1500 }, desc: "Topped with crunchy golden roasted almonds and a satin bow collar" },
+      { id: "ferrero-rocher-premium", name: "Ferrero Rocher Chocolate Premium Cake", category: "Premium Cake", image: "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=800&q=80", prices: { pastry: null, small: 1000, large: 2000 }, desc: "Whole Ferrero Rocher truffles with thick hazelnut chocolate fudge" },
+      { id: "pista-kunafa", name: "Pista Kunafa Cake", category: "Kunafa Special", image: "https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=800&q=80", prices: { pastry: 165, small: 1320, large: null }, desc: "Crispy kataifi kunafa pastry layered with rich pistachio cream" },
+      { id: "biscoff-kunafa", name: "Biscoff Kunafa Cake", category: "Kunafa Special", image: "https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=800&q=80", prices: { pastry: 145, small: 1160, large: null }, desc: "Lotus Biscoff cookie spread layered on toasted golden kunafa" },
+      { id: "rasmalai-cake", name: "Rasmalai Cake", category: "Indian Fusion", image: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=800&q=80", prices: { pastry: 135, small: 700, large: 1400 }, desc: "Cardamom cream infused sponge topped with juicy rasmalai & saffron" },
+      { id: "shahi-rasgulla", name: "Shahi Rasgulla Cake", category: "Indian Fusion", image: "https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=800&q=80", prices: { pastry: 90, small: 600, large: 1200 }, desc: "Traditional royal rasgulla layered in soft rose petal cream" },
+      { id: "rose-falooda", name: "Rose Falooda Cake", category: "Indian Fusion", image: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=800&q=80", prices: { pastry: 100, small: 470, large: 940 }, desc: "Fragrant rose cream, sabja seeds & almond sliver toppings" },
+      { id: "pineapple-cake", name: "Pineapple Cake", category: "Fresh & Fruity", image: "https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=800&q=80", prices: { pastry: 75, small: 350, large: 700 }, desc: "Light vanilla sponge loaded with juicy pineapple chunks" },
+      { id: "butterscotch-cake", name: "Butterscotch Cake", category: "Fresh & Fruity", image: "https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=800&q=80", prices: { pastry: 80, small: 400, large: 800 }, desc: "Golden caramel sauce topped with crunchy praline butterscotch nuts" },
+      { id: "exotic-fruit-cake", name: "Exotic Fruit Cake", category: "Fresh & Fruity", image: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=800&q=80", prices: { pastry: null, small: 570, large: 1140 }, desc: "Crown of fresh kiwi, orange, cherries, and seasonal fruits" },
+      { id: "mix-fruit-premium", name: "Mix Fruit Premium Cake", category: "Fresh & Fruity", image: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=800&q=80", prices: { pastry: 240, small: 650, large: 1300 }, desc: "Roasted almond sides with fresh assorted exotic fruits" }
     ];
 
-    // Current State
     let selectedCake = cakeCatalog[0];
-    let selectedSize = 'small'; // 'pastry' | 'small' | 'large'
-    let isEggless = true;
+    let selectedSize = 'small';
 
-    // Initialize Dropdown & Form
-    function init() {
+    // Fetch dynamic live menu from Google Apps Script
+    async function fetchLiveMenu() {
+      try {
+        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getMenu`);
+        const json = await response.json();
+        if (json.status === "success" && json.menu && json.menu.length > 0) {
+          // Merge dynamic prices into local catalog items
+          json.menu.forEach(remoteItem => {
+            const local = cakeCatalog.find(c => c.id === remoteItem.id);
+            if (local) {
+              if (remoteItem.prices) local.prices = remoteItem.prices;
+              if (remoteItem.inStock !== undefined) local.inStock = remoteItem.inStock;
+            }
+          });
+          document.getElementById('menuCountBadge').innerText = `${cakeCatalog.length} Varieties (Live)`;
+        } else {
+          document.getElementById('menuCountBadge').innerText = `${cakeCatalog.length} Varieties`;
+        }
+      } catch (e) {
+        console.warn("Using offline catalog fallback:", e);
+        document.getElementById('menuCountBadge').innerText = `${cakeCatalog.length} Varieties`;
+      } finally {
+        populateDropdown();
+        renderCake(selectedCake);
+      }
+    }
+
+    function populateDropdown() {
       const dropdown = document.getElementById('cakeSelector');
       dropdown.innerHTML = '';
       cakeCatalog.forEach((cake) => {
@@ -856,20 +602,28 @@
         opt.textContent = `${cake.name} (from ₹${cake.prices.small})`;
         dropdown.appendChild(opt);
       });
+    }
 
-      // Default Date: Tomorrow
+    function init() {
+      // Default dates
       const today = new Date();
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      const dateEl = document.getElementById('pickupDate');
-      dateEl.value = tomorrow.toISOString().split('T')[0];
-      dateEl.min = today.toISOString().split('T')[0];
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      const todayStr = today.toISOString().split('T')[0];
 
-      // Render default cake
+      document.getElementById('pickupDate').value = tomorrowStr;
+      document.getElementById('pickupDate').min = todayStr;
+      document.getElementById('deliveryDate').value = tomorrowStr;
+      document.getElementById('deliveryDate').min = todayStr;
+
+      populateDropdown();
       renderCake(cakeCatalog[0]);
+
+      // Call dynamic sync
+      fetchLiveMenu();
     }
 
-    // When customer or owner switches cake from dropdown
     function onCakeChange(cakeId) {
       const found = cakeCatalog.find(c => c.id === cakeId);
       if (found) {
@@ -879,7 +633,6 @@
       }
     }
 
-    // Render cake details and size pills
     function renderCake(cake) {
       document.getElementById('heroTitle').innerText = cake.name;
       document.getElementById('heroSubtitle').innerText = cake.desc;
@@ -895,9 +648,7 @@
         { key: 'large', label: 'Large', approx: '~1.0 kg', price: cake.prices.large }
       ];
 
-      if (!cake.prices[selectedSize]) {
-        selectedSize = 'small';
-      }
+      if (!cake.prices[selectedSize]) selectedSize = 'small';
 
       sizeDefs.forEach(def => {
         const btn = document.createElement('div');
@@ -905,7 +656,6 @@
         const isActive = isAvailable && selectedSize === def.key;
 
         btn.className = `size-btn ${isActive ? 'active' : ''} ${!isAvailable ? 'disabled' : ''}`;
-        
         btn.innerHTML = `
           <div class="size-name">${def.label}</div>
           <div class="size-approx">${def.approx}</div>
@@ -918,7 +668,6 @@
             renderCake(selectedCake);
           };
         }
-
         container.appendChild(btn);
       });
 
@@ -926,119 +675,241 @@
       document.getElementById('billDisplay').innerText = `₹${currentPrice}`;
     }
 
-    // Toggle Eggless
-    function setEggless(value) {
-      isEggless = value;
-      document.getElementById('egglessYes').className = `pill-opt ${value ? 'selected' : ''}`;
-      document.getElementById('egglessNo').className = `pill-opt ${!value ? 'selected' : ''}`;
-      document.getElementById('heroEgglessTag').innerText = value ? '100% Eggless (Pure Veg)' : 'Regular (With Egg)';
-      document.getElementById('heroEgglessTag').style.background = value ? '#15803d' : '#854d0e';
+    function setFulfillment(type) {
+      fulfillmentType = type;
+      if (type === 'pickup') {
+        document.getElementById('btnPickup').classList.add('active');
+        document.getElementById('btnDelivery').classList.remove('active');
+        document.getElementById('pickupScheduleBlock').style.display = 'grid';
+        document.getElementById('deliveryAddressBlock').style.display = 'none';
+      } else {
+        document.getElementById('btnDelivery').classList.add('active');
+        document.getElementById('btnPickup').classList.remove('active');
+        document.getElementById('pickupScheduleBlock').style.display = 'none';
+        document.getElementById('deliveryAddressBlock').style.display = 'flex';
+      }
     }
 
-    // Extract Order Data
+    function setPaymentMode(mode) {
+      paymentMethod = mode;
+      document.getElementById('payModeUPI').className = `pay-card ${mode === 'UPI' ? 'active' : ''}`;
+      document.getElementById('payModeCOD').className = `pay-card ${mode === 'COD' ? 'active' : ''}`;
+      document.getElementById('submitBtn').innerHTML = mode === 'UPI' 
+        ? '<span>⚡ PLACE ORDER VIA UPI</span>' 
+        : '<span>📦 CONFIRM ORDER (PAY ON DELIVERY)</span>';
+    }
+
     function getOrderPayload() {
-      const phone = document.getElementById("customerPhone") ? document.getElementById("customerPhone").value.trim() : "";
-      const cakeMsg = document.getElementById("cakeMessage") ? document.getElementById("cakeMessage").value.trim() : "";
-      const pickupDate = document.getElementById("pickupDate") ? document.getElementById("pickupDate").value : "";
-      const pickupTime = document.getElementById("pickupTime") ? document.getElementById("pickupTime").value : "";
+      const name = document.getElementById("customerName").value.trim();
+      const phone = document.getElementById("customerPhone").value.trim();
+      const cakeMsg = document.getElementById("cakeMessage").value.trim() || "No message requested";
+
+      if (!name) {
+        alert("Please enter your full name.");
+        document.getElementById("customerName").focus();
+        return null;
+      }
 
       if (!phone || phone.length < 10) {
         alert("Please enter a valid 10-digit mobile number.");
-        const phoneInput = document.getElementById("customerPhone");
-        if (phoneInput) phoneInput.focus();
+        document.getElementById("customerPhone").focus();
         return null;
+      }
+
+      let slotInfo = "";
+      let fullAddress = "Store Pickup Counter";
+
+      if (fulfillmentType === 'pickup') {
+        const pDate = document.getElementById("pickupDate").value;
+        const pTime = document.getElementById("pickupTime").value;
+        slotInfo = `${pDate} (${pTime})`;
+      } else {
+        const dDate = document.getElementById("deliveryDate").value;
+        fullAddress = document.getElementById("deliveryAddress").value.trim();
+        if (!fullAddress || fullAddress.length < 8) {
+          alert("Please enter your complete delivery address with landmark and area.");
+          document.getElementById("deliveryAddress").focus();
+          return null;
+        }
+        slotInfo = `${dDate} (Home Delivery)`;
       }
 
       const sizeLabel = selectedSize === 'pastry' ? 'Pastry' : (selectedSize === 'small' ? 'Small (~0.5 kg)' : 'Large (~1.0 kg)');
       const currentPrice = selectedCake.prices[selectedSize] || selectedCake.prices.small;
-      const eggType = isEggless ? '100% Eggless' : 'Regular';
+      const orderId = "CT-" + Math.floor(100000 + Math.random() * 900000);
 
       return {
-        cakeName: `${selectedCake.name} (${eggType})`,
+        action: "createOrder",
+        orderId: orderId,
+        customerName: name,
+        customerPhone: phone,
+        cakeName: selectedCake.name,
         size: sizeLabel,
         amount: currentPrice,
-        messageOnCake: cakeMsg || "No message requested",
-        pickup: `${pickupDate} (${pickupTime})`,
-        customerPhone: phone
+        messageOnCake: cakeMsg,
+        fulfillmentType: fulfillmentType === 'pickup' ? 'Store Pickup' : 'Home Delivery',
+        deliveryAddress: fullAddress,
+        slot: slotInfo,
+        paymentMode: paymentMethod === 'UPI' ? 'Instant UPI' : 'Pay on Delivery / Pickup'
       };
     }
 
-    // Save Row to Google Sheet
-    async function saveOrderToSheet(payload, paymentMode) {
-      if (!GOOGLE_SCRIPT_URL) return;
-      try {
-        const postData = Object.assign({}, payload, { paymentMode: paymentMode });
-        await fetch(GOOGLE_SCRIPT_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(postData)
-        });
-      } catch (err) {
-        console.error("Sheet writing error:", err);
-      }
-    }
-
-    // Single unified UPI Payment Handler
-    async function triggerUPI() {
+    async function handleOrderPlacement() {
       const payload = getOrderPayload();
       if (!payload) return;
 
-      const btn = document.querySelector(".btn-upi");
+      const btn = document.getElementById("submitBtn");
       const originalText = btn.innerHTML;
       btn.innerHTML = "<span>⏳ Logging Order...</span>";
       btn.style.opacity = "0.7";
 
-      // 1. Log to Google Sheet
-      await saveOrderToSheet(payload, "UPI Initiated");
+      // 1. Silent Log to Google Sheet
+      try {
+        await fetch(GOOGLE_SCRIPT_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+      } catch (e) {
+        console.error("Sheet writing error:", e);
+      }
+
+      // 2. Auto-generate & download PDF Bill directly in customer's browser
+      generateTaxInvoicePDF(payload);
 
       btn.innerHTML = originalText;
       btn.style.opacity = "1";
 
-      // 2. Prepare NPCI UPI link
-      const note = `Cake-${selectedCake.id}-${payload.customerPhone}`.replace(/[^a-zA-Z0-9-]/g, '');
-      const upiUrl = `upi://pay?pa=${encodeURIComponent(SHOP_UPI_ID)}&pn=${encodeURIComponent(SHOP_NAME)}&am=${payload.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
+      // 3. Format Owner WhatsApp Ticket with 1-Tap Customer Confirmation Action
+      const confirmTextForCustomer = encodeURIComponent(
+        `Hello ${payload.customerName}, your order #${payload.orderId} at Chocolate Tree Cake Shop is RECEIVED & CONFIRMED!\n\n` +
+        `🎂 Cake: ${payload.cakeName} (${payload.size})\n` +
+        `💰 Total: ₹${payload.amount}\n` +
+        `📅 Scheduled for: ${payload.slot}\n\n` +
+        `Thank you for ordering with Chocolate Tree!`
+      );
 
-      // 3. Launch on Mobile or Alert on Desktop
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      if (isMobile) {
-        window.location.href = upiUrl;
+      const ownerTicket = 
+        `🚨 *NEW ORDER: CHOCOLATE TREE CAKE SHOP*\n` +
+        `-----------------------------------------\n` +
+        `🧾 *Order ID:* ${payload.orderId}\n` +
+        `👤 *Customer:* ${payload.customerName}\n` +
+        `📞 *Phone:* +91 ${payload.customerPhone}\n` +
+        `🚚 *Type:* ${payload.fulfillmentType}\n` +
+        (payload.fulfillmentType === 'Home Delivery' ? `📍 *Address:* ${payload.deliveryAddress}\n` : '') +
+        `🎂 *Cake:* ${payload.cakeName}\n` +
+        `⚖️ *Size:* ${payload.size}\n` +
+        `✍️ *Message:* "${payload.messageOnCake}"\n` +
+        `📅 *Schedule:* ${payload.slot}\n` +
+        `💰 *Bill Amount:* ₹${payload.amount}\n` +
+        `💳 *Payment:* ${payload.paymentMode}\n` +
+        `-----------------------------------------\n` +
+        `👉 *Tap to Confirm with Customer:*\n` +
+        `https://wa.me/91${payload.customerPhone}?text=${confirmTextForCustomer}`;
+
+      const waOwnerUrl = `https://wa.me/${SHOP_WHATSAPP_NUMBER}?text=${encodeURIComponent(ownerTicket)}`;
+
+      // 4. Handle UPI or Direct Confirmation
+      if (paymentMethod === 'UPI') {
+        const note = `Order-${payload.orderId}`;
+        const upiUrl = `upi://pay?pa=${encodeURIComponent(SHOP_UPI_ID)}&pn=${encodeURIComponent(SHOP_NAME)}&am=${payload.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
+
+        alert("✅ Order Logged & PDF Bill Downloaded!\n\nNow launching your UPI App to complete payment, then sending order details to bakery WhatsApp.");
+
+        const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+        if (isMobile) {
+          window.location.href = upiUrl;
+          setTimeout(() => { window.location.href = waOwnerUrl; }, 2500);
+        } else {
+          window.location.href = waOwnerUrl;
+        }
       } else {
-        alert(`Order logged into Sheet!\n\nUPI intent only opens on Mobile (GPay/PhonePe).\n\nTo pay from desktop, send ₹${payload.amount} to UPI ID: ${SHOP_UPI_ID}`);
+        alert("✅ Order Confirmed & PDF Bill Downloaded!\n\nSending order summary to the bakery on WhatsApp...");
+        window.location.href = waOwnerUrl;
       }
     }
 
-    // Secondary WhatsApp Order
-    async function sendViaWhatsApp() {
-      const payload = getOrderPayload();
-      if (!payload) return;
+    // In-Browser PDF Generator
+    function generateTaxInvoicePDF(data) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
 
-      const btn = document.querySelector(".btn-wa");
-      const originalText = btn.innerHTML;
-      btn.innerHTML = "<span>⏳ Saving...</span>";
-      btn.style.opacity = "0.7";
+      // Header Banner
+      doc.setFillColor(35, 18, 11);
+      doc.rect(0, 0, 595, 85, "F");
 
-      await saveOrderToSheet(payload, "WhatsApp Direct");
+      doc.setTextColor(255, 119, 0);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.text("CHOCOLATE TREE CAKE SHOP", 40, 40);
 
-      btn.innerHTML = originalText;
-      btn.style.opacity = "1";
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text("Cakes • Chocolates • Ice Cream | Phone: +91 85540 34632", 40, 60);
+      doc.text("GSTIN: [To Be Updated Upon Request]", 40, 74);
 
-      const waText = 
-        `🎂 *NEW ORDER: CHOCOLATE TREE CAKE SHOP*\n\n` +
-        `• *Cake:* ${payload.cakeName}\n` +
-        `• *Size:* ${payload.size}\n` +
-        `• *Message on Cake:* "${payload.messageOnCake}"\n` +
-        `• *Pickup Slot:* ${payload.pickup}\n` +
-        `• *Customer Phone:* ${payload.customerPhone}\n` +
-        `• *Total Bill:* ₹${payload.amount}\n\n` +
-        `Please confirm this order!`;
+      // Invoice Details Block
+      doc.setTextColor(50, 50, 50);
+      doc.setFontSize(15);
+      doc.setFont("helvetica", "bold");
+      doc.text("TAX INVOICE / ORDER RECEIPT", 40, 120);
 
-      const waUrl = `https://wa.me/${SHOP_WHATSAPP_NUMBER}?text=${encodeURIComponent(waText)}`;
-      window.open(waUrl, '_blank');
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Invoice No: INV-${data.orderId}`, 40, 140);
+      doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 40, 155);
+      doc.text(`Payment Mode: ${data.paymentMode}`, 40, 170);
+
+      // Customer Info
+      doc.text(`Customer: ${data.customerName}`, 320, 140);
+      doc.text(`Contact: +91 ${data.customerPhone}`, 320, 155);
+      doc.text(`Fulfillment: ${data.fulfillmentType}`, 320, 170);
+      doc.text(`Schedule: ${data.slot}`, 320, 185);
+      if (data.fulfillmentType === 'Home Delivery') {
+        doc.text(`Address: ${data.deliveryAddress.substring(0, 35)}`, 320, 200);
+      }
+
+      // Table Header
+      doc.setFillColor(245, 240, 235);
+      doc.rect(40, 225, 515, 24, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
+      doc.text("Description", 50, 241);
+      doc.text("Size", 260, 241);
+      doc.text("Message on Cake", 340, 241);
+      doc.text("Total", 500, 241);
+
+      // Table Row
+      doc.setFont("helvetica", "normal");
+      doc.text(data.cakeName, 50, 268);
+      doc.text(data.size, 260, 268);
+      doc.text(data.messageOnCake.substring(0, 22), 340, 268);
+      doc.text(`Rs. ${data.amount}.00`, 500, 268);
+
+      // Total Line
+      doc.line(40, 290, 555, 290);
+      doc.setFont("helvetica", "bold");
+      doc.text("Total Amount Payable:", 340, 318);
+      doc.setFontSize(14);
+      doc.setTextColor(230, 92, 0);
+      doc.text(`Rs. ${data.amount}.00`, 500, 318);
+
+      // Terms
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(130, 130, 130);
+      doc.text("Terms & Conditions:", 40, 380);
+      doc.text("1. Please keep cakes refrigerated below 5°C.", 40, 395);
+      doc.text("2. Please present this bill or Order ID during pickup / delivery handoff.", 40, 410);
+      doc.text("Thank you for ordering with Chocolate Tree Cake Shop!", 190, 460);
+
+      // Download file to customer device
+      doc.save(`Invoice_${data.orderId}.pdf`);
     }
 
     window.onload = init;
   </script>
-
 </body>
 </html>

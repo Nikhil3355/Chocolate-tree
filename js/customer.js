@@ -220,39 +220,53 @@ function validateAndExtractPayload() {
 }
 
 // Order Entrypoint
+// Bulletproof Order Submission Handler
 async function handleOrderPlacement() {
     const payload = getOrderPayload();
-    if (!payload) return;
+    if (!payload) return; // Form validation failed (alert already shown)
 
     const btn = document.getElementById("submitBtn");
     const originalText = btn.innerHTML;
-    btn.innerHTML = "<span>⏳ Submitting Order...</span>";
+    btn.innerHTML = "<span>⏳ Logging Order...</span>";
+    btn.disabled = true;
     btn.style.opacity = "0.7";
 
-    // 1. Silent Log to Google Sheet
+    // 1. Silent Log to Google Sheet (non-blocking)
     try {
-        await fetch(GOOGLE_SCRIPT_URL, {
+        fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
             mode: "no-cors",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
-        });
+        }).catch(err => console.warn("Background sheet sync:", err));
     } catch (e) {
-        console.error("Sheet writing error:", e);
+        console.warn("Sheet write failed, proceeding to order:", e);
+    }
+
+    // 2. Safe PDF generation (will NEVER crash order flow if jsPDF fails)
+    try {
+        if (window.jspdf && window.jspdf.jsPDF) {
+            generateTaxInvoicePDF(payload);
+        } else {
+            console.warn("jsPDF library not loaded yet; skipping instant download.");
+        }
+    } catch (pdfErr) {
+        console.warn("PDF generation error:", pdfErr);
     }
 
     btn.innerHTML = originalText;
+    btn.disabled = false;
     btn.style.opacity = "1";
 
-    // 2. Format a CLEAN, CUSTOMER-FACING WhatsApp Message
-    // Notice: Absolutely no admin links or instructions are included in this text!
+    // 3. Prepare Customer Order Text for WhatsApp
     const isUPI = (paymentMethod === 'UPI');
-    const customerWhatsAppMessage =
+    const waOrderText =
         `Hello *Chocolate Tree Cake Shop*! 🎂\n\n` +
         `I would like to place an order:\n` +
         `-----------------------------------------\n` +
         `🧾 *Booking ID:* ${payload.orderId}\n` +
         `👤 *Name:* ${payload.customerName}\n` +
+        `📞 *Phone:* +91 ${payload.customerPhone}\n` +
         `🎂 *Cake:* ${payload.cakeName}\n` +
         `⚖️ *Size:* ${payload.size}\n` +
         `✍️ *Message on Cake:* "${payload.messageOnCake}"\n` +
@@ -260,34 +274,27 @@ async function handleOrderPlacement() {
         (payload.fulfillmentType === 'Home Delivery' ? `📍 *Address:* ${payload.deliveryAddress}\n` : '') +
         `📅 *Schedule:* ${payload.slot}\n` +
         `💰 *Total Amount:* ₹${payload.amount}\n` +
-        `💳 *Payment Method:* ${isUPI ? 'Instant UPI (Screenshot Attached)' : 'Pay on Delivery / Pickup'}\n` +
+        `💳 *Payment Method:* ${isUPI ? 'Instant UPI' : 'Pay on Delivery / Pickup'}\n` +
         `-----------------------------------------\n` +
-        (isUPI ? `📸 *I am attaching my payment screenshot below. Please confirm my order!*` : `Please confirm my order booking!`);
+        (isUPI ? `📸 *I have initiated payment via UPI. Please confirm my order!*` : `Please confirm my order booking!`);
 
-    const waUrl = `https://wa.me/${SHOP_WHATSAPP_NUMBER}?text=${encodeURIComponent(customerWhatsAppMessage)}`;
+    const waUrl = `https://wa.me/${SHOP_WHATSAPP_NUMBER}?text=${encodeURIComponent(waOrderText)}`;
 
-    // 3. Flow Handling
+    // 4. Execution path based on chosen payment mode
     if (isUPI) {
         const note = `Order-${payload.orderId}`;
         const upiUrl = `upi://pay?pa=${encodeURIComponent(SHOP_UPI_ID)}&pn=${encodeURIComponent(SHOP_NAME)}&am=${payload.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
 
-        alert(
-            "💳 Step 1: Complete your payment in GPay / PhonePe / Paytm.\n\n" +
-            "📸 Step 2: Take a screenshot of the successful payment.\n\n" +
-            "💬 Step 3: WhatsApp will now open. Send the message and attach your payment screenshot."
-        );
-
         const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
         if (isMobile) {
+            // Launch UPI directly
             window.location.href = upiUrl;
-            setTimeout(() => {
-                window.location.href = waUrl;
-            }, 2500);
         } else {
-            window.location.href = waUrl;
+            // On desktop, redirect straight to WhatsApp with order details
+            window.open(waUrl, "_blank");
         }
     } else {
-        alert("✅ Order Recorded!\n\nWhatsApp will now open to send your booking details to Chocolate Tree Cake Shop.");
+        // Pay on Delivery: Directly open WhatsApp with booking details
         window.location.href = waUrl;
     }
 }
@@ -386,9 +393,12 @@ async function finalizeAndRenderSuccess(payload, paymentStatus) {
 
 // In-Browser PDF Generator
 function generateTaxInvoicePDF(data) {
+    if (!window.jspdf || !window.jspdf.jsPDF) return;
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: "pt", format: "a4" });
 
+    // Header Banner
     doc.setFillColor(35, 18, 11);
     doc.rect(0, 0, 595, 85, "F");
 
@@ -403,6 +413,7 @@ function generateTaxInvoicePDF(data) {
     doc.text("Cakes • Chocolates • Ice Cream | Phone: +91 85540 34632", 40, 60);
     doc.text("GSTIN: [To Be Updated Upon Request]", 40, 74);
 
+    // Invoice Details Block
     doc.setTextColor(50, 50, 50);
     doc.setFontSize(15);
     doc.setFont("helvetica", "bold");
@@ -414,14 +425,16 @@ function generateTaxInvoicePDF(data) {
     doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 40, 155);
     doc.text(`Payment Mode: ${data.paymentMode}`, 40, 170);
 
-    doc.text(`Customer: ${data.customerName}`, 320, 140);
-    doc.text(`Contact: +91 ${data.customerPhone}`, 320, 155);
+    // Customer Info
+    doc.text(`Customer: ${data.customerName || 'Customer'}`, 320, 140);
+    doc.text(`Contact: +91 ${data.customerPhone || ''}`, 320, 155);
     doc.text(`Fulfillment: ${data.fulfillmentType}`, 320, 170);
-    doc.text(`Schedule: ${data.slot}`, 320, 185);
-    if (data.fulfillmentType === 'Home Delivery') {
-        doc.text(`Address: ${data.deliveryAddress.substring(0, 35)}`, 320, 200);
+    doc.text(`Schedule: ${data.slot || 'Ready'}`, 320, 185);
+    if (data.fulfillmentType === 'Home Delivery' && data.deliveryAddress) {
+        doc.text(`Address: ${String(data.deliveryAddress).substring(0, 35)}`, 320, 200);
     }
 
+    // Table Header
     doc.setFillColor(245, 240, 235);
     doc.rect(40, 225, 515, 24, "F");
     doc.setFont("helvetica", "bold");
@@ -431,12 +444,14 @@ function generateTaxInvoicePDF(data) {
     doc.text("Message on Cake", 340, 241);
     doc.text("Total", 500, 241);
 
+    // Table Row
     doc.setFont("helvetica", "normal");
-    doc.text(data.cakeName, 50, 268);
-    doc.text(data.size, 260, 268);
-    doc.text(data.messageOnCake.substring(0, 22), 340, 268);
+    doc.text(String(data.cakeName || "Cake"), 50, 268);
+    doc.text(String(data.size || "Standard"), 260, 268);
+    doc.text(String(data.messageOnCake || "None").substring(0, 22), 340, 268);
     doc.text(`Rs. ${data.amount}.00`, 500, 268);
 
+    // Total Line
     doc.line(40, 290, 555, 290);
     doc.setFont("helvetica", "bold");
     doc.text("Total Amount Payable:", 340, 318);
@@ -444,6 +459,7 @@ function generateTaxInvoicePDF(data) {
     doc.setTextColor(230, 92, 0);
     doc.text(`Rs. ${data.amount}.00`, 500, 318);
 
+    // Terms
     doc.setFontSize(9);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(130, 130, 130);

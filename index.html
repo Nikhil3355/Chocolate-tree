@@ -1,209 +1,192 @@
-<!DOCTYPE html>
+\<!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chocolate Tree Cake Shop - Direct Order & Bill</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Chocolate Tree Cake Shop - Menu & Orders</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap"
-    rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
   <!-- CSS Stylesheet -->
   <link rel="stylesheet" href="css/customer.css">
 
-  <!-- Standalone jsPDF for in-browser invoice download -->
+  <!-- Standalone jsPDF for in-browser invoice generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
-
 <body>
 
-  <div class="app-card">
+  <div class="store-app-container">
 
+    <!-- Store Header -->
     <header class="store-header">
       <svg class="shop-logo-svg" viewBox="0 0 420 135" xmlns="http://www.w3.org/2000/svg">
         <rect x="5" y="5" width="410" height="125" rx="14" fill="#200d07" stroke="#482415" stroke-width="3" />
-        <path
-          d="M 5 35 Q 25 55 45 35 Q 65 52 85 35 Q 110 58 135 35 Q 160 55 185 35 Q 210 58 235 35 Q 260 55 285 35 Q 310 58 335 35 Q 360 52 385 35 Q 405 52 415 35 L 415 5 L 5 5 Z"
-          fill="#ffffff" opacity="0.95" />
+        <path d="M 5 35 Q 25 55 45 35 Q 65 52 85 35 Q 110 58 135 35 Q 160 55 185 35 Q 210 58 235 35 Q 260 55 285 35 Q 310 58 335 35 Q 360 52 385 35 Q 405 52 415 35 L 415 5 L 5 5 Z" fill="#ffffff" opacity="0.95" />
         <g text-anchor="middle">
-          <text x="210" y="63" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="44"
-            fill="#ff7700" stroke="#ffffff" stroke-width="1.5" letter-spacing="3">CHOCOLATE</text>
+          <text x="210" y="63" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="44" fill="#ff7700" stroke="#ffffff" stroke-width="1.5" letter-spacing="3">CHOCOLATE</text>
         </g>
         <g text-anchor="middle">
           <path d="M 125 76 Q 210 94 295 76" fill="none" stroke="#ff7700" stroke-width="5" stroke-linecap="round" />
-          <text x="210" y="96" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="30"
-            fill="#ffffff" letter-spacing="6">TREE</text>
+          <text x="210" y="96" font-family="'Plus Jakarta Sans', sans-serif" font-weight="900" font-size="30" fill="#ffffff" letter-spacing="6">TREE</text>
           <rect x="150" y="104" width="120" height="18" rx="9" fill="#ff7700" />
-          <text x="210" y="117" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="11"
-            fill="#ffffff" letter-spacing="2">CAKE SHOP</text>
+          <text x="210" y="117" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="11" fill="#ffffff" letter-spacing="2">CAKE SHOP</text>
         </g>
       </svg>
-
       <div class="sub-ribbon">
         <span>Cakes</span><span class="dot"></span><span>Chocolate</span><span class="dot"></span><span>Ice Cream</span>
       </div>
     </header>
 
-    <div class="selector-bar">
-      <div class="selector-label">
-        <span>Selected Cake</span>
-        <span id="menuCountBadge">Loading Catalog...</span>
+    <!-- Top Sticky Filter Bar -->
+    <section class="catalog-filter-bar">
+      <div class="catalog-meta">
+        <h2 class="catalog-heading">Our Fresh Bakes</h2>
+        <span class="catalog-badge" id="menuCountBadge">Loading Catalog...</span>
       </div>
-      <select id="cakeSelector" class="cake-dropdown" onchange="onCakeChange(this.value)"></select>
-    </div>
+      <div class="filter-chips-scroll" id="categoryChips">
+        <button class="filter-chip active" onclick="filterCategory('All', this)">All</button>
+        <button class="filter-chip" onclick="filterCategory('Chocolate Specialty', this)">🍫 Chocolate</button>
+        <button class="filter-chip" onclick="filterCategory('Premium Cake', this)">👑 Premium</button>
+        <button class="filter-chip" onclick="filterCategory('Kunafa Special', this)">🍯 Kunafa</button>
+        <button class="filter-chip" onclick="filterCategory('Indian Fusion', this)">🪔 Fusion</button>
+        <button class="filter-chip" onclick="filterCategory('Fresh & Fruity', this)">🍓 Fruity</button>
+      </div>
+    </section>
 
-    <div class="hero-banner">
-      <img id="heroImage"
-        src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80" alt="Cake" />
-      <div class="hero-gradient">
-        <div class="badge-row">
-          <span class="tag-eggless">100% Eggless Option</span>
-          <span class="tag-category" id="heroCategoryTag">Chocolate Specialty</span>
+    <!-- Visual Card Grid -->
+    <main class="cake-cards-grid" id="cakeGridContainer">
+      <!-- Injected dynamically via customer.js -->
+    </main>
+
+  </div>
+
+  <!-- ================= SLIDE-UP CHECKOUT DRAWER ================= -->
+  <div class="drawer-overlay" id="checkoutDrawerOverlay" onclick="closeCheckoutDrawer(event)">
+    <div class="checkout-drawer" id="checkoutDrawer" onclick="event.stopPropagation()">
+      
+      <!-- Drawer Pull Notch -->
+      <div class="drawer-drag-handle">
+        <div class="drag-pill"></div>
+      </div>
+
+      <!-- Drawer Header / Selected Item Summary -->
+      <div class="drawer-header">
+        <div class="drawer-item-meta">
+          <span class="tag-eggless">100% Eggless</span>
+          <h3 id="drawerCakeTitle" class="drawer-title">Cake Name</h3>
+          <p id="drawerCakeDesc" class="drawer-sub">Cake description...</p>
         </div>
-        <h1 class="hero-title" id="heroTitle">Dutch Truffle Royal Chocolate</h1>
-        <p class="hero-subtitle" id="heroSubtitle">Freshly prepared Belgian chocolate cake</p>
-      </div>
-    </div>
-
-    <div class="form-body">
-
-      <!-- 1. Size Selection -->
-      <div>
-        <label class="field-label">1. Choose Size</label>
-        <div class="weight-options-grid" id="weightContainer"></div>
-      </div>
-
-      <!-- 2. Message on Cake -->
-      <div>
-        <label for="cakeMessage" class="field-label">2. Name / Message on Cake</label>
-        <input type="text" id="cakeMessage" maxlength="42" placeholder="e.g., Happy Birthday Aarav!"
-          class="text-input" />
-        <p class="field-hint">Piped in fresh chocolate lettering</p>
-      </div>
-
-      <!-- 3. Fulfillment Method Toggle -->
-      <div>
-        <label class="field-label">3. Order Fulfillment</label>
-        <div class="segmented-control">
-          <button type="button" class="segment-btn active" id="btnPickup" onclick="setFulfillment('pickup')">
-            🏬 Store Pickup
-          </button>
-          <button type="button" class="segment-btn" id="btnDelivery" onclick="setFulfillment('delivery')">
-            🛵 Home Delivery
-          </button>
+        <div class="drawer-thumb-wrap">
+          <img id="drawerCakeImg" src="" alt="Cake Thumbnail" class="drawer-thumb" />
+          <button class="drawer-close-btn" onclick="closeCheckoutDrawer()">✕</button>
         </div>
       </div>
 
-      <!-- Pickup Schedule -->
-      <div id="pickupScheduleBlock" class="grid-2">
-        <div>
-          <label for="pickupDate" class="field-label">Pickup Date</label>
-          <input type="date" id="pickupDate" class="text-input" />
+      <!-- Scrollable Form Body -->
+      <div class="drawer-scroll-body" id="drawerBody">
+        
+        <!-- 1. Size Options -->
+        <div class="form-group">
+          <label class="field-label">1. Select Size / Weight</label>
+          <div class="weight-options-grid" id="drawerWeightContainer"></div>
         </div>
-        <div>
-          <label for="pickupTime" class="field-label">Time Slot</label>
-          <select id="pickupTime" class="select-input">
-            <option value="11 AM - 01 PM">11 AM - 01 PM</option>
-            <option value="01 PM - 03 PM">01 PM - 03 PM</option>
-            <option value="03 PM - 05 PM">03 PM - 05 PM</option>
-            <option value="05 PM - 07 PM" selected>05 PM - 07 PM</option>
-            <option value="07 PM - 09:30 PM">07 PM - 09:30 PM</option>
-          </select>
-        </div>
-      </div>
 
-      <!-- Delivery Address Fields -->
-      <div id="deliveryAddressBlock" style="display: none; flex-direction: column; gap: 10px;">
-        <div>
-          <label for="deliveryDate" class="field-label">Delivery Date</label>
-          <input type="date" id="deliveryDate" class="text-input" />
+        <!-- 2. Message on Cake -->
+        <div class="form-group">
+          <label for="cakeMessage" class="field-label">2. Message on Cake</label>
+          <input type="text" id="cakeMessage" maxlength="42" placeholder="e.g., Happy Birthday Aarav!" class="text-input" />
+          <p class="field-hint">Piped in fresh rich chocolate lettering</p>
         </div>
-        <div>
-          <label for="deliveryAddress" class="field-label">Full Street Address &amp; Landmark</label>
-          <textarea id="deliveryAddress" rows="2"
-            placeholder="Flat No., Society / Building, Near Landmark, Area, Pincode" class="text-input"
-            style="resize: none;"></textarea>
-        </div>
-      </div>
 
-      <!-- 4. Customer Name -->
-      <div>
-        <label for="customerName" class="field-label">4. Your Full Name</label>
-        <input type="text" id="customerName" placeholder="e.g., Rohit Sharma" class="text-input" />
-      </div>
-
-      <!-- 5. Customer Phone -->
-      <div>
-        <label for="customerPhone" class="field-label">5. Mobile Number</label>
-        <div class="phone-box">
-          <span class="phone-code">+91</span>
-          <input type="tel" id="customerPhone" maxlength="10" placeholder="98765 43210" class="text-input" />
-        </div>
-      </div>
-
-      <!-- 6. Payment Method Selector -->
-      <div>
-        <label class="field-label">6. Payment Method</label>
-        <div class="pay-methods">
-          <div class="pay-card active" id="payModeUPI" onclick="setPaymentMode('UPI')">
-            <div class="pay-card-icon">⚡</div>
-            <div class="pay-card-title">Instant UPI</div>
-            <div class="pay-card-desc">GPay • PhonePe • Paytm</div>
-          </div>
-          <div class="pay-card" id="payModeCOD" onclick="setPaymentMode('COD')">
-            <div class="pay-card-icon">💵</div>
-            <div class="pay-card-title">Pay on Delivery/Pickup</div>
-            <div class="pay-card-desc">Cash or UPI at Delivery</div>
+        <!-- 3. Fulfillment Toggle -->
+        <div class="form-group">
+          <label class="field-label">3. Fulfillment Option</label>
+          <div class="segmented-control">
+            <button type="button" class="segment-btn active" id="btnPickup" onclick="setFulfillment('pickup')">
+              🏬 Store Pickup
+            </button>
+            <button type="button" class="segment-btn" id="btnDelivery" onclick="setFulfillment('delivery')">
+              🛵 Home Delivery
+            </button>
           </div>
         </div>
-      </div>
 
-      <!-- Bill & Submit -->
-      <div class="bill-section">
-        <div class="bill-row">
-          <span class="bill-tag">Total Bill</span>
-          <span class="bill-total" id="billDisplay">₹700</span>
+        <!-- Store Pickup Scheduling -->
+        <div id="pickupScheduleBlock" class="grid-2">
+          <div>
+            <label for="pickupDate" class="field-label">Pickup Date</label>
+            <input type="date" id="pickupDate" class="text-input" />
+          </div>
+          <div>
+            <label for="pickupTime" class="field-label">Time Slot</label>
+            <select id="pickupTime" class="select-input">
+              <option value="11 AM - 01 PM">11 AM - 01 PM</option>
+              <option value="01 PM - 03 PM">01 PM - 03 PM</option>
+              <option value="03 PM - 05 PM">03 PM - 05 PM</option>
+              <option value="05 PM - 07 PM" selected>05 PM - 07 PM</option>
+              <option value="07 PM - 09:30 PM">07 PM - 09:30 PM</option>
+            </select>
+          </div>
         </div>
 
-        <button class="btn-main" type="button" id="submitBtn" onclick="handleOrderPlacement()">
+        <!-- Delivery Address Details -->
+        <div id="deliveryAddressBlock" style="display: none; flex-direction: column; gap: 10px;">
+          <div>
+            <label for="deliveryDate" class="field-label">Delivery Date</label>
+            <input type="date" id="deliveryDate" class="text-input" />
+          </div>
+          <div>
+            <label for="deliveryAddress" class="field-label">Delivery Address &amp; Landmark</label>
+            <textarea id="deliveryAddress" rows="2" placeholder="Flat No., Society / Building, Landmark, Area, Pincode" class="text-input" style="resize: none;"></textarea>
+          </div>
+        </div>
+
+        <!-- 4. Customer Name -->
+        <div class="form-group">
+          <label for="customerName" class="field-label">4. Your Full Name</label>
+          <input type="text" id="customerName" placeholder="e.g., Rohit Sharma" class="text-input" />
+        </div>
+
+        <!-- 5. Customer Phone -->
+        <div class="form-group">
+          <label for="customerPhone" class="field-label">5. Mobile Number</label>
+          <div class="phone-box">
+            <span class="phone-code">+91</span>
+            <input type="tel" id="customerPhone" maxlength="10" placeholder="98765 43210" class="text-input" />
+          </div>
+        </div>
+
+        <!-- 6. Payment Selection -->
+        <div class="form-group">
+          <label class="field-label">6. Payment Option</label>
+          <div class="pay-methods">
+            <div class="pay-card active" id="payModeUPI" onclick="setPaymentMode('UPI')">
+              <div class="pay-card-icon">⚡</div>
+              <div class="pay-card-title">Instant UPI</div>
+              <div class="pay-card-desc">GPay • PhonePe • Paytm</div>
+            </div>
+            <div class="pay-card" id="payModeCOD" onclick="setPaymentMode('COD')">
+              <div class="pay-card-icon">💵</div>
+              <div class="pay-card-title">Pay on Delivery</div>
+              <div class="pay-card-desc">Cash or UPI upon receiving</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Drawer Bottom Sticky Action Bar -->
+      <div class="drawer-footer">
+        <div class="drawer-bill-preview">
+          <span class="bill-label">Grand Total</span>
+          <span class="bill-price" id="drawerBillDisplay">₹0</span>
+        </div>
+        <button class="btn-checkout" type="button" id="submitBtn" onclick="handleOrderPlacement()">
           <span>⚡ PLACE ORDER VIA UPI</span>
         </button>
-
-        <p class="footer-guarantee">
-          Instant PDF Bill Download • Order Confirmation on WhatsApp
-        </p>
       </div>
 
-    </div>
-  </div>
-  <!-- UPI Payment Completion Verification Modal -->
-  <div id="upiVerificationModal"
-    style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; justify-content: center; align-items: flex-end; padding: 12px;">
-    <div
-      style="width: 100%; max-width: 420px; background: #fff; border-radius: 24px; padding: 24px 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
-      <h3 style="font-size: 18px; font-weight: 900; color: #2b1810; margin: 0;">Payment Verification</h3>
-      <p style="font-size: 12px; color: #64748b; line-height: 1.4; margin: 0;">
-        Did you complete your payment of <b id="modalUpiAmount" style="color: #ff7700;">₹700</b> in your UPI app?
-      </p>
-
-      <div>
-        <label
-          style="font-size: 11px; font-weight: 800; color: #633b26; text-transform: uppercase; margin-bottom: 4px; display: block;">UPI
-          Reference / UTR (Optional)</label>
-        <input type="text" id="upiUtrInput" maxlength="12" placeholder="e.g., 428901234567" class="text-input"
-          style="letter-spacing: 1px;" />
-      </div>
-
-      <button type="button" class="btn-main" onclick="confirmUpiPaymentSuccess()">
-        <span>✅ YES, I HAVE PAID</span>
-      </button>
-
-      <button type="button" onclick="cancelUpiPaymentModal()"
-        style="border: none; background: transparent; color: #94a3b8; font-size: 12px; font-weight: 700; cursor: pointer; padding: 6px;">
-        ❌ Cancelled / Payment Failed
-      </button>
     </div>
   </div>
 
@@ -212,5 +195,4 @@
   <script src="js/data.js"></script>
   <script src="js/customer.js"></script>
 </body>
-
 </html>

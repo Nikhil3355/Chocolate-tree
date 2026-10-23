@@ -1,55 +1,11 @@
 let fulfillmentType = 'pickup';
 let paymentMethod = 'UPI';
-let cakeCatalog = defaultCatalogStructure; // Loaded from js/data.js
-let selectedCake = cakeCatalog[0];
+let cakeCatalog = defaultCatalogStructure; // Inherited from js/data.js
+let activeCategory = 'All';
+let selectedCake = null;
 let selectedSize = 'small';
-let pendingOrderPayload = null;
 
-// Fetch dynamic live menu from Google Apps Script
-async function fetchLiveMenu() {
-    try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getMenu&_t=${Date.now()}`);
-        const json = await response.json();
-        if (json.status === "success" && Array.isArray(json.menu) && json.menu.length > 0) {
-            json.menu.forEach(remoteItem => {
-                const local = cakeCatalog.find(c => c.id === remoteItem.id);
-                if (local) {
-                    if (remoteItem.prices) local.prices = remoteItem.prices;
-                    local.inStock = (remoteItem.inStock === true || String(remoteItem.inStock).trim().toUpperCase() === "TRUE");
-                }
-            });
-            document.getElementById('menuCountBadge').innerText = `${cakeCatalog.length} Varieties (Live)`;
-        } else {
-            document.getElementById('menuCountBadge').innerText = `${cakeCatalog.length} Varieties`;
-        }
-    } catch (e) {
-        console.warn("Using offline catalog fallback:", e);
-        document.getElementById('menuCountBadge').innerText = `${cakeCatalog.length} Varieties`;
-    } finally {
-        populateDropdown();
-        renderCake(selectedCake);
-    }
-}
-
-function populateDropdown() {
-    const dropdown = document.getElementById('cakeSelector');
-    if (!dropdown) return;
-    dropdown.innerHTML = '';
-    cakeCatalog.forEach((cake) => {
-        const opt = document.createElement('option');
-        opt.value = cake.id;
-        const isAvailable = (cake.inStock === true || String(cake.inStock).trim().toUpperCase() === "TRUE");
-
-        if (isAvailable) {
-            opt.textContent = `${cake.name} (from ₹${cake.prices.small})`;
-        } else {
-            opt.textContent = `❌ ${cake.name} (Sold Out)`;
-            opt.style.color = "#94a3b8";
-        }
-        dropdown.appendChild(opt);
-    });
-}
-
+// 1. Initialize Page
 function init() {
     const today = new Date();
     const tomorrow = new Date(today);
@@ -62,84 +18,168 @@ function init() {
     if (pDate) { pDate.value = tomorrowStr; pDate.min = todayStr; }
     if (dDate) { dDate.value = tomorrowStr; dDate.min = todayStr; }
 
-    populateDropdown();
-    renderCake(cakeCatalog[0]);
+    renderCakeGrid();
     fetchLiveMenu();
 }
 
-function onCakeChange(cakeId) {
-    const found = cakeCatalog.find(c => c.id === cakeId);
-    if (found) {
-        selectedCake = found;
-        selectedSize = 'small';
-        renderCake(found);
+// 2. Fetch Live Prices and Stock from Sheet
+async function fetchLiveMenu() {
+    try {
+        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getMenu&_t=${Date.now()}`);
+        const json = await response.json();
+        if (json.status === "success" && Array.isArray(json.menu) && json.menu.length > 0) {
+            json.menu.forEach(remoteItem => {
+                const local = cakeCatalog.find(c => c.id === remoteItem.id);
+                if (local) {
+                    if (remoteItem.prices) local.prices = remoteItem.prices;
+                    if (remoteItem.image) local.image = remoteItem.image;
+                    local.inStock = (remoteItem.inStock === true || String(remoteItem.inStock).trim().toUpperCase() === "TRUE");
+                }
+            });
+            document.getElementById('menuCountBadge').innerText = `${cakeCatalog.length} Varieties (Live)`;
+        }
+    } catch (e) {
+        console.warn("Using offline catalog fallback:", e);
+        document.getElementById('menuCountBadge').innerText = `${cakeCatalog.length} Varieties`;
+    } finally {
+        renderCakeGrid();
     }
 }
 
-function renderCake(cake) {
-    document.getElementById('heroTitle').innerText = cake.name;
-    document.getElementById('heroSubtitle').innerText = cake.desc;
-    document.getElementById('heroCategoryTag').innerText = cake.category;
-    document.getElementById('heroImage').src = cake.image;
+// 3. Category Filter
+function filterCategory(cat, btn) {
+    activeCategory = cat;
+    document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderCakeGrid();
+}
 
-    const isAvailable = (cake.inStock === true || String(cake.inStock).trim().toUpperCase() === "TRUE");
-    const heroImage = document.getElementById('heroImage');
-    const submitBtn = document.getElementById('submitBtn');
-    const heroTag = document.getElementById('heroCategoryTag');
+// 4. Render Grid of Cards
+function renderCakeGrid() {
+    const container = document.getElementById('cakeGridContainer');
+    if (!container) return;
 
-    if (!isAvailable) {
-        heroImage.style.filter = "grayscale(85%) opacity(75%)";
-        heroTag.innerText = "SOLD OUT";
-        heroTag.style.background = "#dc2626";
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = "0.45";
-        submitBtn.style.cursor = "not-allowed";
-        submitBtn.innerHTML = "<span>🚫 CURRENTLY SOLD OUT</span>";
-    } else {
-        heroImage.style.filter = "none";
-        heroTag.style.background = "#ff7700";
-        submitBtn.disabled = false;
-        submitBtn.style.opacity = "1";
-        submitBtn.style.cursor = "pointer";
-        setPaymentMode(paymentMethod);
+    const filtered = (activeCategory === 'All')
+        ? cakeCatalog
+        : cakeCatalog.filter(c => c.category === activeCategory);
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #794d35; font-size: 13px;">No cakes found in this category.</div>`;
+        return;
     }
 
-    const container = document.getElementById('weightContainer');
+    container.innerHTML = filtered.map(cake => {
+        const isStock = (cake.inStock === true || String(cake.inStock).trim().toUpperCase() === "TRUE");
+        const startingPrice = cake.prices.small || cake.prices.pastry || cake.prices.large || 0;
+
+        return `
+      <div class="cake-card ${isStock ? '' : 'sold-out'}">
+        <div class="card-img-wrap">
+          <img src="${cake.image}" alt="${escapeHtml(cake.name)}" loading="lazy" />
+          <span class="card-pill-tag">100% Eggless</span>
+          ${!isStock ? `<span class="card-sold-banner">SOLD OUT</span>` : ''}
+        </div>
+
+        <div class="card-content">
+          <div>
+            <div class="card-category">${escapeHtml(cake.category)}</div>
+            <h3 class="card-title">${escapeHtml(cake.name)}</h3>
+            <p class="card-desc">${escapeHtml(cake.desc)}</p>
+          </div>
+
+          <div class="card-footer">
+            <div class="card-price-info">
+              <span class="card-price-label">Starts From</span>
+              <span class="card-price-value">₹${startingPrice}</span>
+            </div>
+            <button 
+              type="button" 
+              class="btn-card-order ${isStock ? '' : 'disabled'}" 
+              onclick="${isStock ? `openCheckoutDrawer('${cake.id}')` : ''}"
+              ${!isStock ? 'disabled' : ''}
+            >
+              ${isStock ? 'Order Now' : 'Sold Out'}
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    }).join('');
+}
+
+// 5. Open Slide-Up Checkout Drawer
+function openCheckoutDrawer(cakeId) {
+    const cake = cakeCatalog.find(c => c.id === cakeId);
+    if (!cake) return;
+
+    selectedCake = cake;
+    // Default to small if available, else first available
+    if (cake.prices.small) selectedSize = 'small';
+    else if (cake.prices.pastry) selectedSize = 'pastry';
+    else selectedSize = 'large';
+
+    document.getElementById('drawerCakeTitle').innerText = cake.name;
+    document.getElementById('drawerCakeDesc').innerText = cake.desc;
+    document.getElementById('drawerCakeImg').src = cake.image;
+
+    renderDrawerWeightPills();
+    updateDrawerBill();
+
+    // Reset inputs
+    document.getElementById('cakeMessage').value = '';
+
+    // Slide drawer up
+    document.getElementById('checkoutDrawerOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden'; // Stop background scroll
+}
+
+function closeCheckoutDrawer(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('checkoutDrawerOverlay').classList.remove('open');
+    document.body.style.overflow = 'auto';
+}
+
+function renderDrawerWeightPills() {
+    if (!selectedCake) return;
+    const container = document.getElementById('drawerWeightContainer');
     container.innerHTML = '';
 
     const sizeDefs = [
-        { key: 'pastry', label: 'Pastry', approx: '1 Slice', price: cake.prices.pastry },
-        { key: 'small', label: (cake.category.includes('Kunafa') ? 'Medium' : 'Small'), approx: (cake.category.includes('Kunafa') ? '~0.75 kg' : '~0.5 kg'), price: cake.prices.small },
-        { key: 'large', label: 'Large', approx: '~1.0 kg', price: cake.prices.large }
+        { key: 'pastry', label: 'Pastry', approx: '1 Slice', price: selectedCake.prices.pastry },
+        { key: 'small', label: (selectedCake.category.includes('Kunafa') ? 'Medium' : 'Small'), approx: (selectedCake.category.includes('Kunafa') ? '~0.75 kg' : '~0.5 kg'), price: selectedCake.prices.small },
+        { key: 'large', label: 'Large', approx: '~1.0 kg', price: selectedCake.prices.large }
     ];
 
-    if (!cake.prices[selectedSize]) selectedSize = 'small';
-
     sizeDefs.forEach(def => {
-        const btn = document.createElement('div');
         const hasPrice = def.price !== null && def.price !== undefined;
-        const isActive = hasPrice && isAvailable && selectedSize === def.key;
+        const isActive = hasPrice && selectedSize === def.key;
 
-        btn.className = `size-btn ${isActive ? 'active' : ''} ${(!hasPrice || !isAvailable) ? 'disabled' : ''}`;
+        const btn = document.createElement('div');
+        btn.className = `size-btn ${isActive ? 'active' : ''} ${!hasPrice ? 'disabled' : ''}`;
         btn.innerHTML = `
       <div class="size-name">${def.label}</div>
       <div class="size-approx">${def.approx}</div>
       <div class="size-price">${hasPrice ? '₹' + def.price : 'N/A'}</div>
     `;
 
-        if (hasPrice && isAvailable) {
+        if (hasPrice) {
             btn.onclick = () => {
                 selectedSize = def.key;
-                renderCake(selectedCake);
+                renderDrawerWeightPills();
+                updateDrawerBill();
             };
         }
         container.appendChild(btn);
     });
-
-    const currentPrice = cake.prices[selectedSize] || cake.prices.small;
-    document.getElementById('billDisplay').innerText = `₹${currentPrice}`;
 }
 
+function updateDrawerBill() {
+    if (!selectedCake) return;
+    const currentPrice = selectedCake.prices[selectedSize] || selectedCake.prices.small || 0;
+    document.getElementById('drawerBillDisplay').innerText = `₹${currentPrice}`;
+}
+
+// 6. Fulfillment & Payment Mode Toggles
 function setFulfillment(type) {
     fulfillmentType = type;
     if (type === 'pickup') {
@@ -160,10 +200,11 @@ function setPaymentMode(mode) {
     document.getElementById('payModeUPI').className = `pay-card ${mode === 'UPI' ? 'active' : ''}`;
     document.getElementById('payModeCOD').className = `pay-card ${mode === 'COD' ? 'active' : ''}`;
     document.getElementById('submitBtn').innerHTML = mode === 'UPI'
-        ? '<span>⚡ PAY VIA UPI & ORDER</span>'
+        ? '<span>⚡ PLACE ORDER VIA UPI</span>'
         : '<span>📦 CONFIRM ORDER (PAY ON DELIVERY)</span>';
 }
 
+// 7. Validation & Order Submission
 function validateAndExtractPayload() {
     const name = document.getElementById("customerName").value.trim();
     const phone = document.getElementById("customerPhone").value.trim();
@@ -219,20 +260,16 @@ function validateAndExtractPayload() {
     };
 }
 
-// Order Entrypoint
-// Bulletproof Order Submission Handler
-// Bulletproof Order Submission Handler
 async function handleOrderPlacement() {
-    // FIX: Match the actual function name defined above
     const payload = validateAndExtractPayload();
-    if (!payload) return; // Form validation failed (alert was shown)
+    if (!payload) return;
 
     const btn = document.getElementById("submitBtn");
     const originalText = btn.innerHTML;
     btn.innerHTML = "<span>⏳ Processing...</span>";
     btn.disabled = true;
 
-    // 1. Fire-and-forget log to Google Sheet (NON-BLOCKING)
+    // 1. Non-blocking log to Google Sheet
     try {
         fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
@@ -275,7 +312,7 @@ async function handleOrderPlacement() {
 
     const waUrl = `https://wa.me/${SHOP_WHATSAPP_NUMBER}?text=${encodeURIComponent(waOrderText)}`;
 
-    // 4. Instant Action (Executes immediately within the user gesture)
+    // 4. Launch Payment or WhatsApp
     if (isUPI) {
         const note = `Order-${payload.orderId}`;
         const upiUrl = `upi://pay?pa=${encodeURIComponent(SHOP_UPI_ID)}&pn=${encodeURIComponent(SHOP_NAME)}&am=${payload.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
@@ -297,106 +334,13 @@ async function handleOrderPlacement() {
     }, 2000);
 }
 
-// User confirms they finished paying in their UPI App
-async function confirmUpiPaymentSuccess() {
-    const utrInput = document.getElementById('upiUtrInput').value.trim();
-    pendingOrderPayload.utr = utrInput || "Not Entered";
-    pendingOrderPayload.paymentMode = utrInput ? `UPI Paid (UTR: ${utrInput})` : "UPI Initiated / Paid";
-
-    document.getElementById('upiVerificationModal').style.display = 'none';
-    await finalizeAndRenderSuccess(pendingOrderPayload, pendingOrderPayload.paymentMode);
-}
-
-function cancelUpiPaymentModal() {
-    document.getElementById('upiVerificationModal').style.display = 'none';
-    pendingOrderPayload = null;
-}
-
-// Writes to Sheet, downloads PDF, notifies Owner, and shows Success View
-async function finalizeAndRenderSuccess(payload, paymentStatus) {
-    // 1. Post to Google Sheet
-    try {
-        await fetch(GOOGLE_SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-    } catch (e) {
-        console.error("Sheet writing error:", e);
-    }
-
-    // 2. Download PDF Invoice now that the order is confirmed
-    generateTaxInvoicePDF(payload);
-
-    // 3. Prepare Owner WhatsApp text
-    const confirmTextForCustomer = encodeURIComponent(
-        `Hello ${payload.customerName}, your order #${payload.orderId} at Chocolate Tree Cake Shop is RECEIVED & CONFIRMED!\n\n` +
-        `🎂 Cake: ${payload.cakeName} (${payload.size})\n` +
-        `💰 Total: ₹${payload.amount}\n` +
-        `📅 Scheduled for: ${payload.slot}\n\n` +
-        `Thank you for ordering with Chocolate Tree!`
-    );
-
-    const ownerTicket =
-        `🚨 *NEW ORDER: CHOCOLATE TREE CAKE SHOP*\n` +
-        `-----------------------------------------\n` +
-        `🧾 *Order ID:* ${payload.orderId}\n` +
-        `👤 *Customer:* ${payload.customerName}\n` +
-        `📞 *Phone:* +91 ${payload.customerPhone}\n` +
-        `🚚 *Type:* ${payload.fulfillmentType}\n` +
-        (payload.fulfillmentType === 'Home Delivery' ? `📍 *Address:* ${payload.deliveryAddress}\n` : '') +
-        `🎂 *Cake:* ${payload.cakeName}\n` +
-        `⚖️ *Size:* ${payload.size}\n` +
-        `✍️ *Message:* "${payload.messageOnCake}"\n` +
-        `📅 *Schedule:* ${payload.slot}\n` +
-        `💰 *Bill Amount:* ₹${payload.amount}\n` +
-        `💳 *Payment:* ${paymentStatus}\n` +
-        `-----------------------------------------\n` +
-        `👉 *Tap to Confirm with Customer:*\n` +
-        `https://wa.me/91${payload.customerPhone}?text=${confirmTextForCustomer}`;
-
-    const waOwnerUrl = `https://wa.me/${SHOP_WHATSAPP_NUMBER}?text=${encodeURIComponent(ownerTicket)}`;
-
-    // 4. Transform Form into a clean Success View
-    const formContainer = document.querySelector('.form-body');
-    formContainer.innerHTML = `
-    <div style="text-align: center; padding: 24px 10px; display: flex; flex-direction: column; align-items: center; gap: 14px;">
-      <div style="width: 60px; height: 60px; border-radius: 50%; background: #dcfce7; color: #166534; font-size: 32px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(22, 101, 52, 0.15);">
-        ✓
-      </div>
-      <h2 style="font-size: 22px; font-weight: 900; color: #2b1810; margin: 0;">Order Placed!</h2>
-      <p style="font-size: 13px; color: #64748b; line-height: 1.5; margin: 0;">
-        Order <b>#${payload.orderId}</b> has been received.<br>
-        Your official tax bill (PDF) has been downloaded.
-      </p>
-
-      <div style="width: 100%; background: #fbf5ee; border-radius: 14px; padding: 14px; text-align: left; font-size: 12px; display: flex; flex-direction: column; gap: 6px; margin: 8px 0; border: 1px solid #ebd9c8;">
-        <div><b>Customer:</b> ${payload.customerName}</div>
-        <div><b>Cake:</b> ${payload.cakeName} (${payload.size})</div>
-        <div><b>Scheduled For:</b> ${payload.slot}</div>
-        <div><b>Total Amount:</b> ₹${payload.amount} (${paymentStatus})</div>
-      </div>
-
-      <a href="${waOwnerUrl}" style="width: 100%; background: #25d366; color: #fff; text-decoration: none; padding: 14px; border-radius: 14px; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);">
-        💬 Notify Bakery on WhatsApp
-      </a>
-
-      <button onclick="window.location.reload()" style="background: transparent; border: none; color: #794d35; font-size: 12px; font-weight: 700; cursor: pointer; padding: 8px;">
-        ← Place Another Order
-      </button>
-    </div>
-  `;
-}
-
-// In-Browser PDF Generator
+// 8. PDF Bill Generation
 function generateTaxInvoicePDF(data) {
     if (!window.jspdf || !window.jspdf.jsPDF) return;
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: "pt", format: "a4" });
 
-    // Header Banner
     doc.setFillColor(35, 18, 11);
     doc.rect(0, 0, 595, 85, "F");
 
@@ -411,7 +355,6 @@ function generateTaxInvoicePDF(data) {
     doc.text("Cakes • Chocolates • Ice Cream | Phone: +91 85540 34632", 40, 60);
     doc.text("GSTIN: [To Be Updated Upon Request]", 40, 74);
 
-    // Invoice Details Block
     doc.setTextColor(50, 50, 50);
     doc.setFontSize(15);
     doc.setFont("helvetica", "bold");
@@ -423,7 +366,6 @@ function generateTaxInvoicePDF(data) {
     doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 40, 155);
     doc.text(`Payment Mode: ${data.paymentMode}`, 40, 170);
 
-    // Customer Info
     doc.text(`Customer: ${data.customerName || 'Customer'}`, 320, 140);
     doc.text(`Contact: +91 ${data.customerPhone || ''}`, 320, 155);
     doc.text(`Fulfillment: ${data.fulfillmentType}`, 320, 170);
@@ -432,7 +374,6 @@ function generateTaxInvoicePDF(data) {
         doc.text(`Address: ${String(data.deliveryAddress).substring(0, 35)}`, 320, 200);
     }
 
-    // Table Header
     doc.setFillColor(245, 240, 235);
     doc.rect(40, 225, 515, 24, "F");
     doc.setFont("helvetica", "bold");
@@ -442,14 +383,12 @@ function generateTaxInvoicePDF(data) {
     doc.text("Message on Cake", 340, 241);
     doc.text("Total", 500, 241);
 
-    // Table Row
     doc.setFont("helvetica", "normal");
     doc.text(String(data.cakeName || "Cake"), 50, 268);
     doc.text(String(data.size || "Standard"), 260, 268);
     doc.text(String(data.messageOnCake || "None").substring(0, 22), 340, 268);
     doc.text(`Rs. ${data.amount}.00`, 500, 268);
 
-    // Total Line
     doc.line(40, 290, 555, 290);
     doc.setFont("helvetica", "bold");
     doc.text("Total Amount Payable:", 340, 318);
@@ -457,7 +396,6 @@ function generateTaxInvoicePDF(data) {
     doc.setTextColor(230, 92, 0);
     doc.text(`Rs. ${data.amount}.00`, 500, 318);
 
-    // Terms
     doc.setFontSize(9);
     doc.setFont("helvetica", "italic");
     doc.setTextColor(130, 130, 130);
@@ -467,6 +405,16 @@ function generateTaxInvoicePDF(data) {
     doc.text("Thank you for ordering with Chocolate Tree Cake Shop!", 190, 460);
 
     doc.save(`Invoice_${data.orderId}.pdf`);
+}
+
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 window.onload = init;

@@ -221,8 +221,10 @@ function validateAndExtractPayload() {
 
 // Order Entrypoint
 // Bulletproof Order Submission Handler
+// Bulletproof Order Submission Handler
 async function handleOrderPlacement() {
-    const payload = getOrderPayload();
+    // FIX: Match the actual function name defined above
+    const payload = validateAndExtractPayload();
     if (!payload) return; // Form validation failed (alert was shown)
 
     const btn = document.getElementById("submitBtn");
@@ -231,7 +233,6 @@ async function handleOrderPlacement() {
     btn.disabled = true;
 
     // 1. Fire-and-forget log to Google Sheet (NON-BLOCKING)
-    // This sends the data in the background so the browser doesn't wait 4 seconds
     try {
         fetch(GOOGLE_SCRIPT_URL, {
             method: "POST",
@@ -243,7 +244,7 @@ async function handleOrderPlacement() {
         console.warn("Sheet write non-blocking call:", e);
     }
 
-    // 2. Safe PDF generation (wrapped in try-catch so it never stops checkout)
+    // 2. Safe PDF generation
     try {
         if (window.jspdf && window.jspdf.jsPDF) {
             generateTaxInvoicePDF(payload);
@@ -274,21 +275,18 @@ async function handleOrderPlacement() {
 
     const waUrl = `https://wa.me/${SHOP_WHATSAPP_NUMBER}?text=${encodeURIComponent(waOrderText)}`;
 
-    // 4. Instant Action (Executes immediately within the user tap event)
+    // 4. Instant Action (Executes immediately within the user gesture)
     if (isUPI) {
         const note = `Order-${payload.orderId}`;
         const upiUrl = `upi://pay?pa=${encodeURIComponent(SHOP_UPI_ID)}&pn=${encodeURIComponent(SHOP_NAME)}&am=${payload.amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
 
         const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
         if (isMobile) {
-            // Direct intent launch — will no longer be blocked by Chrome
             window.location.href = upiUrl;
         } else {
-            // Desktop: Open WhatsApp directly
             window.location.href = waUrl;
         }
     } else {
-        // Pay on Delivery: Directly jump to WhatsApp chat
         window.location.href = waUrl;
     }
 

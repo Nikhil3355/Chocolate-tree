@@ -314,8 +314,12 @@ function restoreActiveOrder() {
     if (!saved.orderId || isNaN(ageHours) || ageHours > 24 * 7) return;
     activeOrder = saved;
     updateMyOrderButton();
-    // Customer came back from the UPI app (or reloaded): reopen their order
-    if (ageHours < 2 && getOrderStage(activeOrder) !== 'delivered') openOrderScreen();
+    // Reopen the order page only when the customer just came back from the UPI app.
+    // A normal visit to the site always lands on the cake menu.
+    if (sessionStorage.getItem('ct_returning_from_upi') === '1') {
+      sessionStorage.removeItem('ct_returning_from_upi');
+      if (getOrderStage(activeOrder) !== 'delivered') openOrderScreen();
+    }
   } catch (e) {}
 }
 
@@ -455,6 +459,7 @@ function payViaUpi() {
   const upiUrl = `upi://pay?pa=${encodeURIComponent(SHOP_UPI_ID)}&pn=${encodeURIComponent(SHOP_NAME)}&am=${Number(o.amount).toFixed(2)}&cu=INR&tn=${encodeURIComponent('Order-' + o.orderId)}`;
   const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
   if (isMobile) {
+    try { sessionStorage.setItem('ct_returning_from_upi', '1'); } catch (e) {}
     window.location.href = upiUrl;
   } else {
     setOrderNote(`On a computer, open any UPI app on your phone and pay ₹${o.amount} to ${SHOP_UPI_ID}. Put "${o.orderId}" in the note.`);

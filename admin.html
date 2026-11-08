@@ -107,9 +107,10 @@
         />
         <div class="chip-group">
           <button class="chip-btn active" onclick="setFilterStatus('all', this)">All Orders</button>
-          <button class="chip-btn" onclick="setFilterStatus('Pending', this)">Pending</button>
-          <button class="chip-btn" onclick="setFilterStatus('Confirmed', this)">Confirmed</button>
-          <button class="chip-btn" onclick="setFilterStatus('Delivered', this)">Delivered</button>
+          <button class="chip-btn" onclick="setFilterStatus('submitted', this)">💰 To Verify</button>
+          <button class="chip-btn" onclick="setFilterStatus('pending', this)">Pending</button>
+          <button class="chip-btn" onclick="setFilterStatus('confirmed', this)">Confirmed</button>
+          <button class="chip-btn" onclick="setFilterStatus('delivered', this)">Delivered</button>
           <button class="chip-btn" onclick="refreshOrdersFeed()">🔄 Refresh</button>
         </div>
       </section>

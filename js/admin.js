@@ -116,28 +116,44 @@ async function refreshOrdersFeed() {
     }
 }
 
+// Maps the status text in the sheet to a stage
+function getOrderStage(statusRaw) {
+    const s = String(statusRaw || "").toLowerCase();
+    if (s.includes("not received")) return "rejected";
+    if (s.includes("delivered") || s.includes("done")) return "delivered";
+    if (s.includes("confirmed") || s.includes("verified") || s.includes("paid")) return "confirmed";
+    if (s.includes("submitted")) return "submitted";
+    return "pending";
+}
+
+function isCodOrder(o) {
+    return !String(o.paymentMode || "").toLowerCase().includes("upi");
+}
+
 function updateMetrics() {
     const total = allOrders.length;
     let pending = 0;
     let delivered = 0;
     let revenue = 0;
+    let toVerify = 0;
 
     allOrders.forEach(o => {
-        const s = (o.status || "").toLowerCase();
-        if (s.includes("delivered") || s.includes("done")) {
-            delivered++;
-        } else {
-            pending++;
+        const stage = getOrderStage(o.status);
+        if (stage === "delivered") delivered++;
+        else pending++;
+        if (stage === "submitted") toVerify++;
+        // Sales count only confirmed or delivered orders
+        if (stage === "confirmed" || stage === "delivered") {
+            revenue += parseFloat(o.amount) || 0;
         }
-        const amt = parseFloat(o.amount) || 0;
-        revenue += amt;
     });
 
     document.getElementById("metricTotal").innerText = total;
     document.getElementById("metricPending").innerText = pending;
     document.getElementById("metricDelivered").innerText = delivered;
     document.getElementById("metricRevenue").innerText = `₹${revenue.toLocaleString("en-IN")}`;
-    document.getElementById("ordersCountBadge").innerText = pending > 0 ? pending : total;
+    // Badge shows orders waiting for payment verification first
+    document.getElementById("ordersCountBadge").innerText = toVerify > 0 ? toVerify : pending;
 }
 
 function setFilterStatus(status, btnElement) {
@@ -152,9 +168,11 @@ function applyOrderFilters() {
     const container = document.getElementById("ordersContainer");
 
     const filtered = allOrders.filter(order => {
-        const orderStatus = (order.status || "Pending").toLowerCase();
+        const stage = getOrderStage(order.status);
         if (currentFilterStatus !== "all") {
-            if (currentFilterStatus.toLowerCase() !== orderStatus) return false;
+            const want = currentFilterStatus.toLowerCase();
+            const matches = want === "pending" ? (stage === "pending" || stage === "rejected") : stage === want;
+            if (!matches) return false;
         }
 
         if (search) {
@@ -177,30 +195,58 @@ function applyOrderFilters() {
 
 function renderOrderCard(o) {
     const statusRaw = (o.status || "Pending Verification").trim();
-    const statusLower = statusRaw.toLowerCase();
-    const isDelivered = statusLower.includes("delivered");
-    const isConfirmed = statusLower.includes("confirmed");
-
-    let statusBadgeClass = "pending";
-    if (isDelivered) statusBadgeClass = "delivered";
-    else if (isConfirmed) statusBadgeClass = "confirmed";
+    const stage = getOrderStage(statusRaw);
+    const isDelivered = stage === "delivered";
+    const isConfirmed = stage === "confirmed";
+    const isCOD = isCodOrder(o);
 
     const isHomeDelivery = String(o.fulfillmentType).toLowerCase().includes("delivery");
     const cleanPhone = String(o.customerPhone || "").replace(/[^0-9]/g, "");
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(o.deliveryAddress || "")}`;
     const safeOrderJson = encodeURIComponent(JSON.stringify(o));
+    const oid = escapeHtml(o.orderId);
+
+    let verifyNote = "";
+    if (stage === "submitted") {
+        verifyNote = `<div class="verify-note">💰 Customer says they paid ₹${escapeHtml(o.amount)}. Check your UPI app or bank for note <b>Order-${oid}</b>, then tap Verify.</div>`;
+    } else if (stage === "rejected") {
+        verifyNote = `<div class="verify-note warn">Payment marked as not received. Waiting for the customer to pay again or send proof.</div>`;
+    } else if (stage === "pending" && !isCOD) {
+        verifyNote = `<div class="verify-note muted">Customer has not tapped "I have paid" yet.</div>`;
+    }
+
+    let buttons = `
+        <button class="btn-card btn-pdf" onclick="downloadAdminTaxPDF(decodeURIComponent('${safeOrderJson}'))">📄 Tax Bill</button>`;
+
+    if (isDelivered) {
+        buttons += `
+        <button class="btn-card btn-status" onclick="updateOrderStatusAction('${oid}', '${isCOD ? "Confirmed" : "Confirmed & Paid"}', this)">↩️ Re-open</button>`;
+    } else if (isConfirmed) {
+        buttons += `
+        <button class="btn-card btn-wa" onclick="notifyCustomer('${oid}')">💬 WhatsApp</button>
+        <button class="btn-card btn-status mark-done" onclick="updateOrderStatusAction('${oid}', 'Delivered', this)">🚚 Mark Delivered</button>`;
+    } else {
+        buttons += `
+        <button class="btn-card btn-status mark-done" onclick="approveAndConfirmOrder('${oid}')">${isCOD ? "✅ Confirm Order" : "✅ Verify &amp; Confirm"}</button>`;
+        if (!isCOD && stage !== "rejected") {
+            buttons += `
+        <button class="btn-card btn-reject" onclick="rejectPayment('${oid}')">❌ Not Received</button>`;
+        }
+    }
 
     return `
-    <div class="order-card ${isDelivered ? 'delivered' : 'pending'}" id="order_${o.orderId}">
+    <div class="order-card ${stage}" id="order_${oid}">
       <div class="card-top">
         <div>
           <div class="order-id-badge">
-            <span>#${o.orderId || 'CT-ORD'}</span>
+            <span>#${oid || 'CT-ORD'}</span>
           </div>
           <div class="order-date">${formatDateTime(o.timestamp)}</div>
         </div>
-        <span class="status-pill ${statusBadgeClass}">${statusRaw}</span>
+        <span class="status-pill ${stage}">${escapeHtml(statusRaw)}</span>
       </div>
+
+      ${verifyNote}
 
       <div class="customer-box">
         <div class="cust-name">👤 ${escapeHtml(o.customerName || "Customer")}</div>
@@ -216,8 +262,8 @@ function renderOrderCard(o) {
           <span class="cake-highlight">🎂 ${escapeHtml(o.cakeName)}</span>
           <b>(${escapeHtml(o.size || "Standard")})</b>
         </div>
-        
-        ${o.messageOnCake && o.messageOnCake !== "None requested" && o.messageOnCake !== "No message" ? `
+
+        ${o.messageOnCake && o.messageOnCake !== "None requested" && o.messageOnCake !== "No message" && o.messageOnCake !== "No message requested" ? `
           <div class="message-tag">✍️ "${escapeHtml(o.messageOnCake)}"</div>
         ` : ''}
 
@@ -229,63 +275,95 @@ function renderOrderCard(o) {
 
       <div class="card-footer">
         <div>
-          <div class="order-amount">₹${o.amount}</div>
+          <div class="order-amount">₹${escapeHtml(o.amount)}</div>
           <div class="order-paymode">💳 ${escapeHtml(o.paymentMode || "Pending")}</div>
         </div>
       </div>
 
-      <div class="card-buttons">
-        <button class="btn-card btn-pdf" onclick="downloadAdminTaxPDF(decodeURIComponent('${safeOrderJson}'))">
-          📄 Tax Bill
-        </button>
-        ${!isConfirmed && !isDelivered ? `
-          <button class="btn-card btn-status mark-done" onclick="approveAndConfirmOrder('${o.orderId}', '${cleanPhone}', '${escapeHtml(o.customerName)}', '${escapeHtml(o.cakeName)}', '${o.amount}', '${escapeHtml(o.slot)}')">
-            ✅ Approve Payment
-          </button>
-        ` : `
-          <button class="btn-card btn-status ${isDelivered ? '' : 'mark-done'}" onclick="updateOrderStatusAction('${o.orderId}', '${isDelivered ? 'Confirmed' : 'Delivered'}', this)">
-            ${isDelivered ? '↩️ Re-open' : '🚚 Mark Delivered'}
-          </button>
-        `}
+      <div class="card-buttons">${buttons}
       </div>
     </div>
   `;
 }
 
-// 1-Tap Action: Marks verified in Sheet and sends official WhatsApp confirmation to customer
-async function approveAndConfirmOrder(orderId, phone, name, cakeName, amount, slot) {
-    if (!confirm(`Confirm that payment of ₹${amount} for Order #${orderId} was received?`)) return;
+function findOrder(orderId) {
+    return allOrders.find(o => String(o.orderId) === String(orderId));
+}
 
-    try {
-        await fetch(GOOGLE_SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                action: "updateOrderStatus",
-                orderId: orderId,
-                status: "Confirmed & Paid"
-            })
-        });
+function postStatus(orderId, status) {
+    return fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "updateOrderStatus", orderId: orderId, status: status })
+    });
+}
 
-        // Update local state
-        const match = allOrders.find(o => String(o.orderId) === String(orderId));
-        if (match) match.status = "Confirmed & Paid";
-        updateMetrics();
-        applyOrderFilters();
+function whatsappUrl(phone, msg) {
+    const clean = String(phone || "").replace(/[^0-9]/g, "").slice(-10);
+    return `https://wa.me/91${clean}?text=${encodeURIComponent(msg)}`;
+}
 
-        // Open WhatsApp to Customer with Official Confirmation Message
-        const customerConfirmMsg =
-            `Hello *${name}*! 👋\n\n` +
-            `Your payment of *₹${amount}* for Order *#${orderId}* at *Chocolate Tree Cake Shop* is *RECEIVED & CONFIRMED*! ✅🎂\n\n` +
-            `• *Cake:* ${cakeName}\n` +
-            `• *Scheduled For:* ${slot}\n\n` +
-            `Our chefs have started baking your fresh cake. If you need anything else, feel free to text us here!`;
+// 1-tap: verify payment (or confirm COD order), update the sheet, open WhatsApp confirmation to the customer
+function approveAndConfirmOrder(orderId) {
+    const o = findOrder(orderId);
+    if (!o) return;
+    const isCOD = isCodOrder(o);
+    const question = isCOD
+        ? `Confirm Order #${orderId} (pay on pickup/delivery)?`
+        : `Confirm that payment of ₹${o.amount} for Order #${orderId} was received?`;
+    if (!confirm(question)) return;
 
-        window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(customerConfirmMsg)}`, "_blank");
-    } catch (err) {
-        alert("Error updating order: " + err);
-    }
+    const newStatus = isCOD ? "Confirmed" : "Confirmed & Paid";
+    postStatus(orderId, newStatus).catch(err => alert("Could not update the Google Sheet: " + err));
+
+    o.status = newStatus;
+    updateMetrics();
+    applyOrderFilters();
+
+    // Opened in the same tap so the browser does not block it
+    window.open(whatsappUrl(o.customerPhone, buildConfirmMessage(o)), "_blank");
+}
+
+function buildConfirmMessage(o) {
+    const isCOD = isCodOrder(o);
+    return (
+        `Hello *${o.customerName}*! 👋\n\n` +
+        (isCOD
+            ? `Your order *#${o.orderId}* at *${SHOP_NAME}* is *CONFIRMED*! 🎂\n\n`
+            : `Your payment of *₹${o.amount}* for order *#${o.orderId}* at *${SHOP_NAME}* is *RECEIVED & CONFIRMED*! ✅🎂\n\n`) +
+        `• *Cake:* ${o.cakeName} (${o.size})\n` +
+        `• *Scheduled For:* ${o.slot}\n` +
+        (isCOD ? `• *To pay on ${String(o.fulfillmentType).toLowerCase().includes("delivery") ? "delivery" : "pickup"}:* ₹${o.amount}\n` : '') +
+        `\nOpen our website and tap *My order* to see your order status and download your bill.\n` +
+        `Our chefs are getting your cake ready. Message us here if you need anything!`
+    );
+}
+
+// Customer says they paid but nothing arrived in the shop's account
+function rejectPayment(orderId) {
+    const o = findOrder(orderId);
+    if (!o) return;
+    if (!confirm(`Mark payment for Order #${orderId} as NOT received and message the customer?`)) return;
+
+    postStatus(orderId, "Payment Not Received").catch(err => alert("Could not update the Google Sheet: " + err));
+    o.status = "Payment Not Received";
+    updateMetrics();
+    applyOrderFilters();
+
+    const msg =
+        `Hello *${o.customerName}*,\n\n` +
+        `We could not find your payment of *₹${o.amount}* for order *#${o.orderId}* yet.\n\n` +
+        `If you have already paid, please send the UPI transaction ID or a screenshot here. ` +
+        `Otherwise please pay to *${SHOP_UPI_ID}* with note *Order-${o.orderId}*.`;
+    window.open(whatsappUrl(o.customerPhone, msg), "_blank");
+}
+
+// Re-send the confirmation message to a confirmed customer
+function notifyCustomer(orderId) {
+    const o = findOrder(orderId);
+    if (!o) return;
+    window.open(whatsappUrl(o.customerPhone, buildConfirmMessage(o)), "_blank");
 }
 
 async function updateOrderStatusAction(orderId, newStatus, btnElement) {
@@ -296,18 +374,9 @@ async function updateOrderStatusAction(orderId, newStatus, btnElement) {
     btnElement.disabled = true;
 
     try {
-        await fetch(GOOGLE_SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                action: "updateOrderStatus",
-                orderId: orderId,
-                status: newStatus
-            })
-        });
+        await postStatus(orderId, newStatus);
 
-        const match = allOrders.find(o => String(o.orderId) === String(orderId));
+        const match = findOrder(orderId);
         if (match) match.status = newStatus;
 
         updateMetrics();
@@ -317,19 +386,6 @@ async function updateOrderStatusAction(orderId, newStatus, btnElement) {
         btnElement.innerText = originalText;
         btnElement.disabled = false;
     }
-}
-
-function sendCustomerWhatsApp(phone, name, orderId, cakeName, amount, slot) {
-    const cleanPhone = phone.replace(/[^0-9]/g, "");
-    const msg =
-        `Hello *${name}*,\n\n` +
-        `Your order *#${orderId}* at *Chocolate Tree Cake Shop* is CONFIRMED! 🎂✨\n\n` +
-        `• *Cake:* ${cakeName}\n` +
-        `• *Total Bill:* ₹${amount}\n` +
-        `• *Schedule:* ${slot}\n\n` +
-        `Our kitchen is preparing your fresh cake. If you need any assistance, feel free to message us here!`;
-
-    window.open(`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(msg)}`, "_blank");
 }
 
 function downloadAdminTaxPDF(orderJsonStr) {

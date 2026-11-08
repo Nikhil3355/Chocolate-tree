@@ -472,7 +472,7 @@ async function loadCatalogData() {
     </div>`;
 
     try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getMenu`);
+        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getMenu&_t=${Date.now()}`);
         const json = await response.json();
 
         if (json.status === "success" && Array.isArray(json.menu) && json.menu.length > 0) {
@@ -481,6 +481,8 @@ async function loadCatalogData() {
                 if (remote) {
                     return {
                         ...item,
+                        image: remote.image ? remote.image : item.image,
+                        hasCustomPhoto: !!remote.image,
                         prices: remote.prices || item.prices,
                         inStock: remote.inStock !== undefined ? remote.inStock : item.inStock
                     };
@@ -522,6 +524,18 @@ function renderCatalogEditor() {
               <div class="switch-wrap ${isStock ? 'active' : ''}" onclick="toggleCakeStock('${cake.id}')">
                 <div class="toggle-slider"></div>
                 <span class="stock-text" id="stockText_${cake.id}">${isStock ? 'In Stock' : 'Sold Out'}</span>
+              </div>
+            </div>
+
+            <div class="photo-row">
+              <img class="photo-thumb" id="thumb_${cake.id}" src="${escapeHtml(cake.image)}" alt="" />
+              <div class="photo-actions">
+                <label class="btn-photo">
+                  📷 Change Photo
+                  <input type="file" accept="image/*" hidden onchange="changeCakePhoto('${cake.id}', this)" />
+                </label>
+                <button type="button" class="btn-photo-reset" id="resetBtn_${cake.id}" style="${cake.hasCustomPhoto ? '' : 'display:none;'}" onclick="resetCakePhoto('${cake.id}')">↩️ Default</button>
+                <div class="photo-msg" id="photoMsg_${cake.id}"></div>
               </div>
             </div>
 
@@ -567,6 +581,102 @@ function renderCatalogEditor() {
 
     container.innerHTML = html;
 }
+
+// ================= CAKE PHOTO UPLOAD =================
+// Shrinks the photo on the phone first so the upload is small and fast
+function resizeImageToBase64(file, maxSize) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Could not read the photo"));
+        reader.onload = () => {
+            const img = new Image();
+            img.onerror = () => reject(new Error("This file is not a valid image"));
+            img.onload = () => {
+                const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+                const w = Math.round(img.width * scale);
+                const h = Math.round(img.height * scale);
+                const canvas = document.createElement("canvas");
+                canvas.width = w;
+                canvas.height = h;
+                canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL("image/jpeg", 0.85).split(",")[1]);
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function setPhotoMsg(cakeId, msg, isError) {
+    const el = document.getElementById(`photoMsg_${cakeId}`);
+    if (!el) return;
+    el.innerText = msg;
+    el.style.color = isError ? "#b91c1c" : "#15803d";
+}
+
+async function fetchSavedImage(cakeId) {
+    const res = await fetch(`${GOOGLE_SCRIPT_URL}?action=getMenu&_t=${Date.now()}`);
+    const json = await res.json();
+    const item = (json.menu || []).find(m => m.id === cakeId);
+    return item && item.image ? item.image : "";
+}
+
+async function changeCakePhoto(cakeId, input) {
+    const file = input.files && input.files[0];
+    input.value = "";
+    if (!file) return;
+    const cake = liveCatalog.find(c => c.id === cakeId);
+    if (!cake) return;
+
+    try {
+        setPhotoMsg(cakeId, "⏳ Uploading photo...", false);
+        const base64 = await resizeImageToBase64(file, 900);
+        const before = cake.hasCustomPhoto ? cake.image : "";
+
+        await fetch(GOOGLE_SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ action: "updateCakePhoto", id: cakeId, imageBase64: base64, mimeType: "image/jpeg" })
+        });
+
+        const saved = await fetchSavedImage(cakeId);
+        if (!saved || saved === before) throw new Error("Photo was not saved. Check the Apps Script update.");
+
+        cake.image = saved;
+        cake.hasCustomPhoto = true;
+        document.getElementById(`thumb_${cakeId}`).src = saved;
+        document.getElementById(`resetBtn_${cakeId}`).style.display = "";
+        setPhotoMsg(cakeId, "✅ Photo updated. Customers will see it now.", false);
+    } catch (err) {
+        setPhotoMsg(cakeId, "❌ " + err.message, true);
+    }
+}
+
+async function resetCakePhoto(cakeId) {
+    if (!confirm("Go back to the original photo for this cake?")) return;
+    const cake = liveCatalog.find(c => c.id === cakeId);
+    if (!cake) return;
+
+    try {
+        setPhotoMsg(cakeId, "⏳ Resetting...", false);
+        await fetch(GOOGLE_SCRIPT_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ action: "updateCakePhoto", id: cakeId, imageUrl: "" })
+        });
+        const original = defaultCatalogStructure.find(c => c.id === cakeId);
+        cake.image = original ? original.image : cake.image;
+        cake.hasCustomPhoto = false;
+        document.getElementById(`thumb_${cakeId}`).src = cake.image;
+        document.getElementById(`resetBtn_${cakeId}`).style.display = "none";
+        setPhotoMsg(cakeId, "✅ Original photo restored.", false);
+    } catch (err) {
+        setPhotoMsg(cakeId, "❌ " + err.message, true);
+    }
+}
+
 
 function toggleCakeStock(cakeId) {
     const cake = liveCatalog.find(c => c.id === cakeId);

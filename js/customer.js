@@ -370,9 +370,10 @@ function renderOrderScreen() {
   const steps = upi
     ? ['Order placed', 'Payment submitted', 'Payment verified', 'Delivered']
     : ['Order placed', 'Confirmed by shop', 'Delivered'];
+  // Number of finished steps: finished = green tick, next one = in-progress circle
   const stageIndex = upi
-    ? { pending: 0, rejected: 0, submitted: 1, confirmed: 2, delivered: 3 }[stage]
-    : { pending: 0, rejected: 0, submitted: 0, confirmed: 1, delivered: 2 }[stage];
+    ? { pending: 1, rejected: 1, submitted: 2, confirmed: 3, delivered: 4 }[stage]
+    : { pending: 1, rejected: 1, submitted: 1, confirmed: 2, delivered: 3 }[stage];
 
   let tone = 'wait', title = '', text = '';
   if (stage === 'delivered') {

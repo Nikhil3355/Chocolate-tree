@@ -16,12 +16,12 @@ const BUSINESS = {
 
   // Address lines (empty lines are skipped)
   addressLines: [
-    "",                                  // e.g. "Shop No. 4, Main Road, Near ABC Chowk"
-    ""                                   // e.g. "Nagpur, Maharashtra - 440001"
+    "opp. Sanskriti Society, Kaspate Wasti, ",                                  // e.g. "Shop No. 4, Main Road, Near ABC Chowk"
+    "Wakad, Pune, Pimpri-Chinchwad, Maharashtra 411057"                                   // e.g. "Nagpur, Maharashtra - 440001"
   ],
-  phone: "+91 85540 34632",
+  phone: "+91 9168717481",
   email: "",
-  website: "",
+  website: "https://chocolatetree.in/",
 
   // Tax and licence details
   gstin: "",                             // e.g. "27ABCDE1234F1Z5". Leave "" if you are not GST registered:

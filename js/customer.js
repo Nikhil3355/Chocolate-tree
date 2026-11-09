@@ -287,38 +287,59 @@ async function handleOrderPlacement() {
 
   // Show the order confirmation screen right away
   activeOrder = payload;
+  myOrders.unshift(payload);
   persistActiveOrder();
   closeCheckoutDrawer();
-  openOrderScreen();
+  openOrderDetail(payload.orderId);
 
   btn.innerHTML = originalText;
   btn.disabled = false;
 }
 
 // ================= ORDER CONFIRMATION SCREEN =================
-const ORDER_STORAGE_KEY = 'ct_last_order';
+const ORDER_STORAGE_KEY = 'ct_orders';
+const OLD_ORDER_STORAGE_KEY = 'ct_last_order';
+let myOrders = [];
 let activeOrder = null;
+let orderView = 'list';
 let statusPollTimer = null;
 
+// Saves the order being viewed into the list of this customer's orders
 function persistActiveOrder() {
-  try { localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(activeOrder)); } catch (e) {}
+  if (activeOrder) {
+    const i = myOrders.findIndex(o => o.orderId === activeOrder.orderId);
+    if (i >= 0) myOrders[i] = activeOrder; else myOrders.unshift(activeOrder);
+  }
+  try { localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(myOrders)); } catch (e) {}
   updateMyOrderButton();
 }
 
 function restoreActiveOrder() {
   try {
-    const raw = localStorage.getItem(ORDER_STORAGE_KEY);
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    const ageHours = (Date.now() - new Date(saved.placedAt).getTime()) / 3600000;
-    if (!saved.orderId || isNaN(ageHours) || ageHours > 24 * 7) return;
-    activeOrder = saved;
+    let list = JSON.parse(localStorage.getItem(ORDER_STORAGE_KEY) || '[]');
+
+    // Bring over the single order saved by the earlier version
+    const legacy = localStorage.getItem(OLD_ORDER_STORAGE_KEY);
+    if (legacy) {
+      const old = JSON.parse(legacy);
+      if (old && old.orderId && !list.some(x => x.orderId === old.orderId)) list.push(old);
+      localStorage.removeItem(OLD_ORDER_STORAGE_KEY);
+    }
+
+    const maxAgeMs = 30 * 24 * 3600 * 1000;
+    myOrders = list
+      .filter(o => o && o.orderId && (Date.now() - new Date(o.placedAt).getTime()) < maxAgeMs)
+      .sort((a, b) => new Date(b.placedAt) - new Date(a.placedAt))
+      .slice(0, 30);
+    try { localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(myOrders)); } catch (e) {}
     updateMyOrderButton();
+
     // Reopen the order page only when the customer just came back from the UPI app.
     // A normal visit to the site always lands on the cake menu.
-    if (sessionStorage.getItem('ct_returning_from_upi') === '1') {
+    const returningId = sessionStorage.getItem('ct_returning_from_upi');
+    if (returningId) {
       sessionStorage.removeItem('ct_returning_from_upi');
-      if (getOrderStage(activeOrder) !== 'delivered') openOrderScreen();
+      if (myOrders.some(o => o.orderId === returningId)) openOrderDetail(returningId);
     }
   } catch (e) {}
 }
@@ -326,8 +347,9 @@ function restoreActiveOrder() {
 function updateMyOrderButton() {
   const btn = document.getElementById('myOrderBtn');
   if (!btn) return;
-  const show = activeOrder && getOrderStage(activeOrder) !== 'delivered';
-  btn.classList.toggle('show', !!show);
+  const n = myOrders.length;
+  btn.classList.toggle('show', n > 0);
+  btn.innerText = n > 1 ? `🧾 My orders (${n})` : '🧾 My order';
 }
 
 // Maps the status text from the sheet to a stage
@@ -344,14 +366,39 @@ function isUpiOrder(order) {
   return String(order.paymentMode || '').toLowerCase().includes('upi');
 }
 
+// "My orders" button: one order opens directly, several show a list
 function openOrderScreen() {
-  if (!activeOrder) return;
-  renderOrderScreen();
+  if (!myOrders.length) return;
+  if (myOrders.length === 1) openOrderDetail(myOrders[0].orderId);
+  else openOrdersList();
+}
+
+function openOrdersList() {
+  orderView = 'list';
+  activeOrder = null;
+  showOrderScreen();
+}
+
+function openOrderDetail(orderId) {
+  const o = myOrders.find(x => x.orderId === orderId);
+  if (!o) return;
+  activeOrder = o;
+  orderView = 'detail';
+  showOrderScreen();
+}
+
+function showOrderScreen() {
+  renderCurrentOrderView();
   document.getElementById('orderScreen').classList.add('open');
   document.body.style.overflow = 'hidden';
   clearInterval(statusPollTimer);
-  statusPollTimer = setInterval(() => refreshOrderStatus(false), 15000);
-  refreshOrderStatus(false);
+  statusPollTimer = setInterval(() => refreshAllStatuses(false), 15000);
+  refreshAllStatuses(false);
+}
+
+function renderCurrentOrderView() {
+  if (orderView === 'detail' && activeOrder) renderOrderScreen();
+  else renderOrdersList();
 }
 
 function closeOrderScreen() {
@@ -359,6 +406,38 @@ function closeOrderScreen() {
   document.body.style.overflow = 'auto';
   clearInterval(statusPollTimer);
   updateMyOrderButton();
+}
+
+function renderOrdersList() {
+  const labels = {
+    pending: 'Waiting', submitted: 'Verifying payment', confirmed: 'Confirmed',
+    delivered: 'Delivered', rejected: 'Payment not found'
+  };
+  const cards = myOrders.map(o => {
+    const stage = getOrderStage(o);
+    const label = (stage === 'pending' && isUpiOrder(o)) ? 'Awaiting payment' : labels[stage];
+    return `
+      <button class="ol-card" onclick="openOrderDetail('${escapeHtml(o.orderId)}')">
+        <div class="ol-top"><b>${escapeHtml(o.cakeName)}</b><span class="ol-pill ${stage}">${label}</span></div>
+        <div class="ol-sub">${escapeHtml(o.size)} · ${escapeHtml(o.slot)}</div>
+        <div class="ol-bottom"><span>${escapeHtml(o.orderId)}</span><b>₹${o.amount}</b></div>
+      </button>`;
+  }).join('');
+
+  document.getElementById('orderScreen').innerHTML = `
+    <div class="order-sheet">
+      <div class="os-top">
+        <div>
+          <div class="os-id-label">Your orders</div>
+          <div class="os-id">My orders</div>
+        </div>
+        <button class="drawer-close-btn" onclick="closeOrderScreen()" aria-label="Close">✕</button>
+      </div>
+      ${cards}
+      <button class="os-refresh" onclick="refreshAllStatuses(true)" id="osRefreshBtn">🔄 Check latest status</button>
+      <div class="os-note" id="osNote"></div>
+    </div>
+  `;
 }
 
 function renderOrderScreen() {
@@ -422,6 +501,7 @@ function renderOrderScreen() {
     <div class="order-sheet">
       <div class="os-top">
         <div>
+          ${myOrders.length > 1 ? '<button class="os-back" onclick="openOrdersList()">← All orders</button>' : ''}
           <div class="os-id-label">Order ID</div>
           <div class="os-id">${escapeHtml(o.orderId)}</div>
         </div>
@@ -460,7 +540,7 @@ function payViaUpi() {
   const upiUrl = `upi://pay?pa=${encodeURIComponent(SHOP_UPI_ID)}&pn=${encodeURIComponent(SHOP_NAME)}&am=${Number(o.amount).toFixed(2)}&cu=INR&tn=${encodeURIComponent('Order-' + o.orderId)}`;
   const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
   if (isMobile) {
-    try { sessionStorage.setItem('ct_returning_from_upi', '1'); } catch (e) {}
+    try { sessionStorage.setItem('ct_returning_from_upi', o.orderId); } catch (e) {}
     window.location.href = upiUrl;
   } else {
     setOrderNote(`On a computer, open any UPI app on your phone and pay ₹${o.amount} to ${SHOP_UPI_ID}. Put "${o.orderId}" in the note.`);
@@ -529,33 +609,47 @@ function postOrderStatus(orderId, status) {
 }
 
 // Asks the sheet for the latest status (needs the getOrderStatus action in Apps Script)
-async function refreshOrderStatus(manual) {
-  const o = activeOrder;
-  if (!o) return;
-  const btn = document.getElementById('osRefreshBtn');
-  if (manual && btn) { btn.innerText = '⏳ Checking...'; btn.disabled = true; }
-
+async function fetchOrderStatus(o) {
   try {
     const url = `${GOOGLE_SCRIPT_URL}?action=getOrderStatus&orderId=${encodeURIComponent(o.orderId)}&phone=${encodeURIComponent(o.customerPhone)}&_t=${Date.now()}`;
     const res = await fetch(url);
     const json = await res.json();
-    if (json.status === 'success' && json.orderStatus) {
-      if (json.orderStatus !== o.status) {
-        o.status = json.orderStatus;
-        persistActiveOrder();
-        renderOrderScreen();
-      }
-      if (manual) setOrderNote('Status is up to date.');
-    } else if (manual) {
-      setOrderNote('Live status is not available right now. The shop will confirm on WhatsApp.');
-    }
-  } catch (e) {
-    if (manual) setOrderNote('Could not check status. Please check your internet or message the shop.');
-  } finally {
-    const b = document.getElementById('osRefreshBtn');
-    if (b) { b.innerText = '🔄 Check latest status'; b.disabled = false; }
-  }
+    if (json.status === 'success' && json.orderStatus) return json.orderStatus;
+  } catch (e) {}
+  return null;
 }
+
+// Checks the latest status of every order that is not delivered yet
+async function refreshAllStatuses(manual) {
+  const btn = document.getElementById('osRefreshBtn');
+  if (manual && btn) { btn.innerText = '⏳ Checking...'; btn.disabled = true; }
+
+  const targets = myOrders.filter(o => getOrderStage(o) !== 'delivered');
+  const results = await Promise.all(targets.map(o => fetchOrderStatus(o)));
+
+  let changed = false;
+  let anyOk = false;
+  targets.forEach((o, i) => {
+    if (results[i]) {
+      anyOk = true;
+      if (results[i] !== o.status) { o.status = results[i]; changed = true; }
+    }
+  });
+
+  if (changed) {
+    persistActiveOrder();
+    renderCurrentOrderView();
+  }
+  if (manual) {
+    setOrderNote(anyOk || !targets.length
+      ? 'Status is up to date.'
+      : 'Live status is not available right now. The shop will confirm on WhatsApp.');
+  }
+  const b = document.getElementById('osRefreshBtn');
+  if (b) { b.innerText = '🔄 Check latest status'; b.disabled = false; }
+}
+
+function refreshOrderStatus(manual) { return refreshAllStatuses(manual); }
 
 function setOrderNote(msg) {
   const n = document.getElementById('osNote');

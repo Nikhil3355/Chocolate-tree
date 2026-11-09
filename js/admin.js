@@ -267,6 +267,8 @@ function renderOrderCard(o) {
           <div class="message-tag">✍️ "${escapeHtml(o.messageOnCake)}"</div>
         ` : ''}
 
+        ${o.candles && o.candles !== "No" ? `<div class="candle-tag">🕯️ Candles: ${escapeHtml(o.candles)}</div>` : ''}
+
         <div class="delivery-box">
           <div><b>${isHomeDelivery ? '🛵 Home Delivery' : '🏬 Store Pickup'}:</b> ${escapeHtml(o.slot || 'Scheduled')}</div>
           ${isHomeDelivery ? `<div>📍 <i>${escapeHtml(o.deliveryAddress)}</i></div>` : ''}
@@ -333,6 +335,7 @@ function buildConfirmMessage(o) {
             ? `Your order *#${o.orderId}* at *${SHOP_NAME}* is *CONFIRMED*! 🎂\n\n`
             : `Your payment of *₹${o.amount}* for order *#${o.orderId}* at *${SHOP_NAME}* is *RECEIVED & CONFIRMED*! ✅🎂\n\n`) +
         `• *Cake:* ${o.cakeName} (${o.size})\n` +
+        (o.candles && o.candles !== "No" ? `• *Candles:* ${o.candles}\n` : '') +
         `• *Scheduled For:* ${o.slot}\n` +
         (isCOD ? `• *To pay on ${String(o.fulfillmentType).toLowerCase().includes("delivery") ? "delivery" : "pickup"}:* ₹${o.amount}\n` : '') +
         `\nOpen our website and tap *My order* to see your order status and download your bill.\n` +

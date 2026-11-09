@@ -1,5 +1,6 @@
 let fulfillmentType = 'pickup';
 let paymentMethod = 'UPI';
+let needCandles = false;
 let cakeCatalog = defaultCatalogStructure; // Inherited from js/data.js
 let activeCategory = 'All';
 let selectedCake = null;
@@ -128,10 +129,19 @@ function openCheckoutDrawer(cakeId) {
 
   // Reset inputs
   document.getElementById('cakeMessage').value = '';
+  document.getElementById('candleDetails').value = '';
+  setCandles(false);
 
   // Slide drawer up
   document.getElementById('checkoutDrawerOverlay').classList.add('open');
   document.body.style.overflow = 'hidden'; // Stop background scroll
+}
+
+function setCandles(flag) {
+  needCandles = !!flag;
+  document.getElementById('btnCandleNo').classList.toggle('active', !needCandles);
+  document.getElementById('btnCandleYes').classList.toggle('active', needCandles);
+  document.getElementById('candleDetailBlock').style.display = needCandles ? 'block' : 'none';
 }
 
 function closeCheckoutDrawer(event) {
@@ -210,6 +220,8 @@ function validateAndExtractPayload() {
   const name = document.getElementById("customerName").value.trim();
   const phone = document.getElementById("customerPhone").value.trim();
   const cakeMsg = document.getElementById("cakeMessage").value.trim() || "No message requested";
+  const candleNote = document.getElementById("candleDetails").value.trim();
+  const candlesText = needCandles ? (candleNote ? "Yes - " + candleNote : "Yes") : "No";
 
   if (!name) {
     alert("Please enter your full name.");
@@ -254,6 +266,7 @@ function validateAndExtractPayload() {
     size: sizeLabel,
     amount: currentPrice,
     messageOnCake: cakeMsg,
+    candles: candlesText,
     fulfillmentType: fulfillmentType === 'pickup' ? 'Store Pickup' : 'Home Delivery',
     deliveryAddress: fullAddress,
     slot: slotInfo,
@@ -519,6 +532,7 @@ function renderOrderScreen() {
         <div class="os-row"><span>Cake</span><b>${escapeHtml(o.cakeName)}</b></div>
         <div class="os-row"><span>Size</span><b>${escapeHtml(o.size)}</b></div>
         <div class="os-row"><span>Message on cake</span><b>${escapeHtml(o.messageOnCake)}</b></div>
+        <div class="os-row"><span>Candles</span><b>${escapeHtml(o.candles || 'No')}</b></div>
         <div class="os-row"><span>${escapeHtml(o.fulfillmentType)}</span><b>${escapeHtml(o.slot)}</b></div>
         ${o.fulfillmentType === 'Home Delivery' ? `<div class="os-row"><span>Address</span><b>${escapeHtml(o.deliveryAddress)}</b></div>` : ''}
         <div class="os-row"><span>Payment</span><b>${escapeHtml(o.paymentMode)}</b></div>
@@ -588,6 +602,7 @@ function buildShopWhatsAppUrl(extraLine) {
     `🎂 *Cake:* ${o.cakeName}\n` +
     `⚖️ *Size:* ${o.size}\n` +
     `✍️ *Message on Cake:* "${o.messageOnCake}"\n` +
+    `🕯️ *Candles:* ${o.candles || 'No'}\n` +
     `🚚 *Fulfillment:* ${o.fulfillmentType}\n` +
     (o.fulfillmentType === 'Home Delivery' ? `📍 *Address:* ${o.deliveryAddress}\n` : '') +
     `📅 *Schedule:* ${o.slot}\n` +

@@ -41,8 +41,11 @@
     <!-- Top Sticky Filter Bar -->
     <section class="catalog-filter-bar">
       <div class="catalog-meta">
-        <h2 class="catalog-heading">Our Fresh Bakes</h2>
-        <span class="catalog-badge" id="menuCountBadge">Loading Catalog...</span>
+        <div class="catalog-title-wrap">
+          <h2 class="catalog-heading">Our Fresh Bakes</h2>
+          <span class="catalog-badge" id="menuCountBadge">Loading Catalog...</span>
+        </div>
+        <button class="my-order-btn" id="myOrderBtn" type="button" onclick="openOrderScreen()">🧾 My order</button>
       </div>
       <div class="filter-chips-scroll" id="categoryChips">
         <button class="filter-chip active" onclick="filterCategory('All', this)">All</button>
@@ -99,9 +102,22 @@
           <p class="field-hint">Piped in fresh rich chocolate lettering</p>
         </div>
 
-        <!-- 3. Fulfillment Toggle -->
+        <!-- 3. Candles (applies to pickup and delivery) -->
         <div class="form-group">
-          <label class="field-label">3. Fulfillment Option</label>
+          <label class="field-label">3. Candles</label>
+          <div class="segmented-control">
+            <button type="button" class="segment-btn active" id="btnCandleNo" onclick="setCandles(false)">🚫 No candles</button>
+            <button type="button" class="segment-btn" id="btnCandleYes" onclick="setCandles(true)">🕯️ Yes, need candles</button>
+          </div>
+          <div id="candleDetailBlock" style="display: none; margin-top: 8px;">
+            <input type="text" id="candleDetails" maxlength="40" placeholder="e.g., 1 pack, or number candle 25 (optional)" class="text-input" />
+          </div>
+          <p class="field-hint">Same for store pickup and home delivery</p>
+        </div>
+
+        <!-- 4. Fulfillment Toggle -->
+        <div class="form-group">
+          <label class="field-label">4. Fulfillment Option</label>
           <div class="segmented-control">
             <button type="button" class="segment-btn active" id="btnPickup" onclick="setFulfillment('pickup')">
               🏬 Store Pickup
@@ -144,13 +160,13 @@
 
         <!-- 4. Customer Name -->
         <div class="form-group">
-          <label for="customerName" class="field-label">4. Your Full Name</label>
+          <label for="customerName" class="field-label">5. Your Full Name</label>
           <input type="text" id="customerName" placeholder="e.g., Rohit Sharma" class="text-input" />
         </div>
 
         <!-- 5. Customer Phone -->
         <div class="form-group">
-          <label for="customerPhone" class="field-label">5. Mobile Number</label>
+          <label for="customerPhone" class="field-label">6. Mobile Number</label>
           <div class="phone-box">
             <span class="phone-code">+91</span>
             <input type="tel" id="customerPhone" maxlength="10" placeholder="98765 43210" class="text-input" />
@@ -159,7 +175,7 @@
 
         <!-- 6. Payment Selection -->
         <div class="form-group">
-          <label class="field-label">6. Payment Option</label>
+          <label class="field-label">7. Payment Option</label>
           <div class="pay-methods">
             <div class="pay-card active" id="payModeUPI" onclick="setPaymentMode('UPI')">
               <div class="pay-card-icon">⚡</div>
@@ -192,7 +208,6 @@
 
   <!-- ================= ORDER CONFIRMATION SCREEN (filled by customer.js) ================= -->
   <div class="order-screen" id="orderScreen"></div>
-  <button class="my-order-btn" id="myOrderBtn" type="button" onclick="openOrderScreen()">🧾 My order</button>
 
   <!-- Scripts in dependency order -->
   <script src="js/config.js"></script>

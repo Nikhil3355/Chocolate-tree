@@ -610,23 +610,24 @@ body {
 .btn-checkout:active { transform: scale(0.98); }
 
 /* ================= ORDER CONFIRMATION SCREEN ================= */
+.catalog-title-wrap { display: flex; align-items: center; gap: 8px; min-width: 0; }
+
 .my-order-btn {
-  position: fixed;
-  right: 14px;
-  bottom: 14px;
-  z-index: 30;
   display: none;
-  background: var(--text-main);
+  flex-shrink: 0;
+  background: var(--primary-orange);
   color: #ffffff;
   border: none;
   border-radius: 999px;
-  padding: 11px 16px;
+  padding: 7px 13px;
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(230, 92, 0, 0.3);
 }
-.my-order-btn.show { display: block; }
+.my-order-btn.show { display: inline-block; }
+.my-order-btn:active { transform: scale(0.96); }
 
 .order-screen {
   position: fixed;

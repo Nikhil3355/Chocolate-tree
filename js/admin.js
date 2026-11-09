@@ -621,6 +621,23 @@ async function fetchSavedImage(cakeId) {
     return item && item.image ? item.image : "";
 }
 
+// Sends a photo action to Apps Script and returns its JSON reply.
+// Returns null if the browser blocks reading the reply (the request still went through).
+async function postPhotoAction(payload) {
+    const opts = {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+    };
+    try {
+        const res = await fetch(GOOGLE_SCRIPT_URL, opts);
+        return await res.json();
+    } catch (err) {
+        await fetch(GOOGLE_SCRIPT_URL, { ...opts, mode: "no-cors" });
+        return null;
+    }
+}
+
 async function changeCakePhoto(cakeId, input) {
     const file = input.files && input.files[0];
     input.value = "";
@@ -633,14 +650,10 @@ async function changeCakePhoto(cakeId, input) {
         const base64 = await resizeImageToBase64(file, 900);
         const before = cake.hasCustomPhoto ? cake.image : "";
 
-        await fetch(GOOGLE_SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({ action: "updateCakePhoto", id: cakeId, imageBase64: base64, mimeType: "image/jpeg" })
-        });
+        const reply = await postPhotoAction({ action: "updateCakePhoto", id: cakeId, imageBase64: base64, mimeType: "image/jpeg" });
+        if (reply && reply.status !== "success") throw new Error("Server said: " + (reply.message || "unknown error"));
 
-        const saved = await fetchSavedImage(cakeId);
+        const saved = (reply && reply.imageUrl) || await fetchSavedImage(cakeId);
         if (!saved || saved === before) throw new Error("Photo was not saved. Check the Apps Script update.");
 
         cake.image = saved;
@@ -660,12 +673,8 @@ async function resetCakePhoto(cakeId) {
 
     try {
         setPhotoMsg(cakeId, "⏳ Resetting...", false);
-        await fetch(GOOGLE_SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({ action: "updateCakePhoto", id: cakeId, imageUrl: "" })
-        });
+        const reply = await postPhotoAction({ action: "updateCakePhoto", id: cakeId, imageUrl: "" });
+        if (reply && reply.status !== "success") throw new Error("Server said: " + (reply.message || "unknown error"));
         const original = defaultCatalogStructure.find(c => c.id === cakeId);
         cake.image = original ? original.image : cake.image;
         cake.hasCustomPhoto = false;

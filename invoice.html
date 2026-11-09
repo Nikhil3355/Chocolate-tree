@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invoice Maker - Chocolate Tree Cake Shop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/invoice.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+  <div class="inv-wrapper">
+
+    <header class="app-bar">
+      <div class="app-brand">
+        <div class="brand-avatar">CT</div>
+        <div>
+          <div class="brand-title">Invoice Maker</div>
+          <div class="brand-sub">Walk-in &amp; manual bills</div>
+        </div>
+      </div>
+      <a class="btn-back" href="admin.html">← Admin</a>
+    </header>
+
+    <main class="inv-main">
+
+      <!-- 1. Customer -->
+      <section class="card">
+        <h3 class="card-title"><span class="step">1</span> Customer</h3>
+        <div class="grid-2">
+          <div>
+            <label class="lbl" for="custName">Name</label>
+            <input type="text" id="custName" class="inp" placeholder="Walk-in Customer" oninput="updateSummary()" />
+          </div>
+          <div>
+            <label class="lbl" for="custPhone">Mobile (optional)</label>
+            <input type="tel" id="custPhone" class="inp" maxlength="10" placeholder="98765 43210" />
+          </div>
+        </div>
+        <label class="lbl" for="custAddress">Address (optional)</label>
+        <textarea id="custAddress" class="inp" rows="2" placeholder="Only if delivering or needed on the bill"></textarea>
+        <label class="lbl" for="custGstin">Customer GSTIN (optional, for business buyers)</label>
+        <input type="text" id="custGstin" class="inp" maxlength="15" placeholder="e.g. 27ABCDE1234F1Z5" />
+      </section>
+
+      <!-- 2. Items -->
+      <section class="card">
+        <h3 class="card-title"><span class="step">2</span> Items</h3>
+
+        <div class="quick-add">
+          <select id="qaCake" class="inp" onchange="onCakeChange()"></select>
+          <div class="qa-row">
+            <select id="qaSize" class="inp"></select>
+            <input type="number" id="qaQty" class="inp qa-qty" min="1" value="1" aria-label="Quantity" />
+            <button type="button" class="btn-add" onclick="addQuickItem()">+ Add</button>
+          </div>
+        </div>
+
+        <div id="itemsList" class="items-list"></div>
+        <button type="button" class="btn-ghost" onclick="addCustomItem()">+ Add custom item (candles, pastry, box...)</button>
+      </section>
+
+      <!-- 3. Charges and payment -->
+      <section class="card">
+        <h3 class="card-title"><span class="step">3</span> Charges &amp; payment</h3>
+        <div class="grid-3">
+          <div>
+            <label class="lbl" for="discType">Discount</label>
+            <select id="discType" class="inp" onchange="updateSummary()">
+              <option value="amount">Amount (Rs.)</option>
+              <option value="percent">Percent (%)</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl" for="discValue">Value</label>
+            <input type="number" id="discValue" class="inp" min="0" placeholder="0" oninput="updateSummary()" />
+          </div>
+          <div>
+            <label class="lbl" for="delivery">Delivery (Rs.)</label>
+            <input type="number" id="delivery" class="inp" min="0" placeholder="0" oninput="updateSummary()" />
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label class="lbl" for="payMode">Payment mode</label>
+            <select id="payMode" class="inp">
+              <option>Cash</option>
+              <option>UPI</option>
+              <option>Card</option>
+              <option>Bank Transfer</option>
+              <option>Pay Later</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl" for="payStatus">Payment status</label>
+            <select id="payStatus" class="inp" onchange="onPayStatusChange()">
+              <option value="full">Paid in full</option>
+              <option value="advance">Advance received</option>
+              <option value="none">Not paid yet</option>
+            </select>
+          </div>
+        </div>
+        <div id="advanceBlock" style="display:none;">
+          <label class="lbl" for="advance">Advance received (Rs.)</label>
+          <input type="number" id="advance" class="inp" min="0" placeholder="e.g. 300" oninput="updateSummary()" />
+        </div>
+      </section>
+
+      <!-- 4. Details -->
+      <section class="card">
+        <h3 class="card-title"><span class="step">4</span> Bill details</h3>
+        <div class="grid-2">
+          <div>
+            <label class="lbl" for="invNo">Invoice no.</label>
+            <input type="text" id="invNo" class="inp" />
+          </div>
+          <div>
+            <label class="lbl" for="invDate">Date</label>
+            <input type="date" id="invDate" class="inp" />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div>
+            <label class="lbl" for="orderType">Order type</label>
+            <select id="orderType" class="inp">
+              <option>Walk-in</option>
+              <option>Store Pickup</option>
+              <option>Home Delivery</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl" for="slot">Pickup / delivery time (optional)</label>
+            <input type="text" id="slot" class="inp" placeholder="e.g. 10 Nov, 5 PM" />
+          </div>
+        </div>
+        <label class="lbl" for="notes">Notes (message on cake, balance info...)</label>
+        <textarea id="notes" class="inp" rows="2" placeholder="Shown on the invoice"></textarea>
+      </section>
+
+      <!-- History -->
+      <section class="card">
+        <h3 class="card-title">🕘 Recent invoices</h3>
+        <div id="historyList"></div>
+      </section>
+
+    </main>
+
+    <!-- Sticky summary + actions -->
+    <div class="sticky-bar">
+      <div class="sum-box">
+        <div class="sum-label" id="sumLabel">Total</div>
+        <div class="sum-total" id="sumTotal">Rs. 0</div>
+        <div class="sum-sub" id="sumSub"></div>
+      </div>
+      <button type="button" class="btn-main dark" onclick="downloadManualInvoice()">📄 PDF</button>
+      <button type="button" class="btn-main" onclick="shareManualInvoice()">💬 Share</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/invoice.js"></script>
+  <script src="js/invoice-app.js"></script>
+</body>
+</html>

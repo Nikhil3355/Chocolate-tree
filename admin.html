@@ -60,10 +60,16 @@
           <div class="brand-sub">Shopkeeper Portal</div>
         </div>
       </div>
-      <button class="btn-logout" onclick="logoutAdmin()">
-        <span>🔒</span>
-        <span>Lock</span>
-      </button>
+      <div class="app-bar-actions">
+        <a class="btn-logout" href="invoice.html">
+          <span>🧾</span>
+          <span>New Invoice</span>
+        </a>
+        <button class="btn-logout" onclick="logoutAdmin()">
+          <span>🔒</span>
+          <span>Lock</span>
+        </button>
+      </div>
     </header>
 
     <nav class="nav-tabs">
@@ -148,6 +154,7 @@
   <!-- Scripts in dependency order -->
   <script src="js/config.js"></script>
   <script src="js/data.js"></script>
+  <script src="js/invoice.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

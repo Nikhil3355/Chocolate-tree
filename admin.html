@@ -63,7 +63,7 @@
       <div class="app-bar-actions">
         <a class="btn-logout" href="invoice.html">
           <span>🧾</span>
-          <span>New Invoice</span>
+          <span>Invoice</span>
         </a>
         <button class="btn-logout" onclick="logoutAdmin()">
           <span>🔒</span>
@@ -84,42 +84,30 @@
 
     <!-- TAB 1: ORDERS FEED -->
     <main class="tab-view active" id="viewOrders">
-      <section class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-num" id="metricTotal">0</div>
-          <div class="metric-label">Total</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-num orange" id="metricPending">0</div>
-          <div class="metric-label">Pending</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-num green" id="metricDelivered">0</div>
-          <div class="metric-label">Done</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-num" id="metricRevenue">₹0</div>
-          <div class="metric-label">Sales</div>
-        </div>
-      </section>
+      <div class="day-strip">
+        <span id="stripDate"></span>
+        <span id="stripSales"></span>
+      </div>
 
-      <section class="search-filter-wrap">
-        <input 
-          type="search" 
-          id="orderSearchInput" 
-          placeholder="🔍 Search name, phone, order ID..." 
-          class="search-bar" 
-          oninput="applyOrderFilters()"
-        />
-        <div class="chip-group">
-          <button class="chip-btn active" onclick="setFilterStatus('all', this)">All Orders</button>
-          <button class="chip-btn" onclick="setFilterStatus('submitted', this)">💰 To Verify</button>
-          <button class="chip-btn" onclick="setFilterStatus('pending', this)">Pending</button>
-          <button class="chip-btn" onclick="setFilterStatus('confirmed', this)">Confirmed</button>
-          <button class="chip-btn" onclick="setFilterStatus('delivered', this)">Delivered</button>
-          <button class="chip-btn" onclick="refreshOrdersFeed()">🔄 Refresh</button>
+      <div class="orders-toolbar">
+        <div class="search-row">
+          <input
+            type="search"
+            id="orderSearchInput"
+            placeholder="🔍 Search name, phone, order ID, cake..."
+            class="search-bar"
+            oninput="applyOrderFilters()"
+          />
+          <button class="btn-refresh" onclick="refreshOrdersFeed()" aria-label="Refresh orders">🔄</button>
         </div>
-      </section>
+        <div class="chip-group" id="chipGroup">
+          <button class="chip-btn active" data-view="active" onclick="setView('active')">Needs action <span class="chip-n" id="cnt_active">0</span></button>
+          <button class="chip-btn" data-view="today" onclick="setView('today')">📅 Today <span class="chip-n" id="cnt_today">0</span></button>
+          <button class="chip-btn" data-view="verify" onclick="setView('verify')">💰 To verify <span class="chip-n" id="cnt_verify">0</span></button>
+          <button class="chip-btn" data-view="delivered" onclick="setView('delivered')">✅ Delivered <span class="chip-n" id="cnt_delivered">0</span></button>
+          <button class="chip-btn" data-view="all" onclick="setView('all')">All <span class="chip-n" id="cnt_all">0</span></button>
+        </div>
+      </div>
 
       <div id="ordersContainer">
         <div class="loader-wrap">
